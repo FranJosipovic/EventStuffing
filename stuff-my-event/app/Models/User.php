@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use App\UserRole;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -22,6 +25,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'agency_id',
     ];
 
     /**
@@ -47,6 +52,29 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'role' => UserRole::class,
         ];
+    }
+
+    // Helper methods
+    public function isAgencyOwner(): bool
+    {
+        return $this->role === UserRole::AGENCY_OWNER;
+    }
+
+    public function isStaffMember(): bool
+    {
+        return $this->role === UserRole::STAFF_MEMBER;
+    }
+
+    public function ownedAgency(): HasOne
+    {
+        return $this->hasOne(Agency::class, 'owner_id');
+    }
+
+    // Many-to-one: User belongs to an agency
+    public function agency(): BelongsTo
+    {
+        return $this->belongsTo(Agency::class);
     }
 }

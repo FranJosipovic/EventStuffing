@@ -10,41 +10,33 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { footerNavItems, getNavItemsForRole } from '@/config/navigation';
+import { SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
-
 export function AppSidebar() {
+    const { auth } = usePage<SharedData>().props;
+
+    // Get nav items based on user role
+    const mainNavItems = useMemo(() => {
+        return getNavItemsForRole(auth.user.role);
+    }, [auth.user.role]);
+
+    // Determine home route based on role
+    const homeRoute =
+        auth.user.role === 'agency_owner'
+            ? '/admin/dashboard'
+            : '/staff/dashboard';
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href={homeRoute} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
