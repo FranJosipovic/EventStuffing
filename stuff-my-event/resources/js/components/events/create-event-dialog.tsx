@@ -1,7 +1,5 @@
 'use client';
 
-import type React from 'react';
-
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,19 +12,33 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useForm } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { FormEventHandler, useState } from 'react';
 
 export function CreateEventDialog() {
     const [open, setOpen] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
+        description: '',
+        date: '',
+        time_from: '',
+        time_to: '',
+        location: '',
+        required_staff_count: 1,
+    });
+
+    const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
-        // TODO: Handle form submission
-        console.log('[v0] Event creation form submitted');
-        setOpen(false);
+
+        post('/admin/events', {
+            onSuccess: () => {
+                reset();
+                setOpen(false); // Close dialog on success
+            },
+        });
     };
 
     return (
@@ -51,49 +63,92 @@ export function CreateEventDialog() {
                             <Label htmlFor="name">Event Name</Label>
                             <Input
                                 id="name"
+                                value={data.name}
+                                onChange={(e) =>
+                                    setData('name', e.target.value)
+                                }
                                 placeholder="e.g., Annual Tech Conference"
                                 required
                             />
+                            {errors.name && (
+                                <p className="text-sm text-red-600">
+                                    {errors.name}
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid gap-2">
                             <Label htmlFor="description">Description</Label>
                             <Textarea
                                 id="description"
+                                value={data.description}
+                                onChange={(e) =>
+                                    setData('description', e.target.value)
+                                }
                                 placeholder="Brief description of the event..."
                                 className="min-h-[100px]"
-                                required
                             />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="client">Client</Label>
-                            <Select required>
-                                <SelectTrigger id="client">
-                                    <SelectValue placeholder="Select a client" />
-                                </SelectTrigger>
-                                {/* <SelectContent>
-                  {mockClients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent> */}
-                            </Select>
+                            {errors.description && (
+                                <p className="text-sm text-red-600">
+                                    {errors.description}
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-3">
                             <div className="grid gap-2">
                                 <Label htmlFor="date">Date</Label>
-                                <Input id="date" type="date" required />
+                                <Input
+                                    id="date"
+                                    type="date"
+                                    value={data.date}
+                                    onChange={(e) =>
+                                        setData('date', e.target.value)
+                                    }
+                                    min={new Date().toISOString().split('T')[0]}
+                                    required
+                                />
+                                {errors.date && (
+                                    <p className="text-sm text-red-600">
+                                        {errors.date}
+                                    </p>
+                                )}
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="startTime">Start Time</Label>
-                                <Input id="startTime" type="time" required />
+                                <Label htmlFor="time_from">Start Time</Label>
+                                <Input
+                                    id="time_from"
+                                    type="time"
+                                    value={data.time_from}
+                                    onChange={(e) =>
+                                        setData('time_from', e.target.value)
+                                    }
+                                    step="60"
+                                    required
+                                />
+                                {errors.time_from && (
+                                    <p className="text-sm text-red-600">
+                                        {errors.time_from}
+                                    </p>
+                                )}
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="endTime">End Time</Label>
-                                <Input id="endTime" type="time" required />
+                                <Label htmlFor="time_to">End Time</Label>
+                                <Input
+                                    id="time_to"
+                                    type="time"
+                                    value={data.time_to}
+                                    onChange={(e) =>
+                                        setData('time_to', e.target.value)
+                                    }
+                                    step="60"
+                                    required
+                                />
+                                {errors.time_to && (
+                                    <p className="text-sm text-red-600">
+                                        {errors.time_to}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -101,23 +156,47 @@ export function CreateEventDialog() {
                             <Label htmlFor="location">Location</Label>
                             <Input
                                 id="location"
+                                value={data.location}
+                                onChange={(e) =>
+                                    setData('location', e.target.value)
+                                }
                                 placeholder="e.g., Convention Center, Downtown"
                                 required
                             />
+                            {errors.location && (
+                                <p className="text-sm text-red-600">
+                                    {errors.location}
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="staffRequired">
+                            <Label htmlFor="required_staff_count">
                                 Number of Staff Required
                             </Label>
                             <Input
-                                id="staffRequired"
+                                id="required_staff_count"
+                                value={data.required_staff_count}
+                                onChange={(e) =>
+                                    setData(
+                                        'required_staff_count',
+                                        parseInt(e.target.value) || 1,
+                                    )
+                                }
                                 type="number"
                                 min="1"
                                 placeholder="e.g., 10"
                                 required
                             />
+                            {errors.required_staff_count && (
+                                <p className="text-sm text-red-600">
+                                    {errors.required_staff_count}
+                                </p>
+                            )}
                         </div>
+
+                        {/* Hidden status field */}
+                        <input type="hidden" value="new" />
                     </div>
 
                     <DialogFooter>
@@ -125,10 +204,13 @@ export function CreateEventDialog() {
                             type="button"
                             variant="outline"
                             onClick={() => setOpen(false)}
+                            disabled={processing}
                         >
                             Cancel
                         </Button>
-                        <Button type="submit">Create Event</Button>
+                        <Button type="submit" disabled={processing}>
+                            {processing ? 'Creating...' : 'Create Event'}
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

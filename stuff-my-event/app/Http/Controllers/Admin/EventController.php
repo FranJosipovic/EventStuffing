@@ -7,6 +7,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\Event;
 use App\Models\Enums\EventStatus;
+use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 
 class EventController extends Controller
 {
@@ -65,5 +67,45 @@ class EventController extends Controller
                 'name' => $user->agency->name,
             ],
         ]);
+    }
+
+    /**
+     * Store a newly created event in storage.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $user = auth()->guard()->user();
+
+        // Validate the request
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'time_from' => ['required', 'date_format:H:i'],
+            'time_to' => ['required', 'date_format:H:i', 'after:time_from'],
+            'location' => ['required', 'string', 'max:255'],
+            'required_staff_count' => ['required', 'integer', 'min:1', 'max:100'],
+        ], [
+            'date.after_or_equal' => 'Event date must be today or in the future.',
+            'time_to.after' => 'End time must be after start time.',
+            'required_staff_count.min' => 'At least 1 staff member is required.',
+            'required_staff_count.max' => 'Maximum 100 staff members allowed.',
+        ]);
+
+        // Create the event
+        $event = Event::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'date' => $validated['date'],
+            'time_from' => $validated['time_from'],
+            'time_to' => $validated['time_to'],
+            'location' => $validated['location'],
+            'required_staff_count' => $validated['required_staff_count'],
+            'status' => EventStatus::NEW,
+            'agency_id' => $user->agency_id,
+        ]);
+
+        return redirect()->route('admin.events.index')
+            ->with('success', 'Event created successfully!');
     }
 }

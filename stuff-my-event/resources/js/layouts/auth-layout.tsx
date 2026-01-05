@@ -1,4 +1,5 @@
 import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
+import { Toaster } from 'sonner';
 
 export default function AuthLayout({
     children,
@@ -12,6 +13,7 @@ export default function AuthLayout({
 }) {
     return (
         <AuthLayoutTemplate title={title} description={description} {...props}>
+            <Toaster />
             {children}
         </AuthLayoutTemplate>
     );

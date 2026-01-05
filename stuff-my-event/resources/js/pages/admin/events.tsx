@@ -26,10 +26,11 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { SharedData, type BreadcrumbItem } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
 import { CalendarIcon, Clock, MapPin, Search, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export interface Event {
     id: string;
@@ -47,6 +48,10 @@ export interface Event {
     required_staff_count: number;
 }
 
+interface Props {
+    events: Event[];
+}
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Events',
@@ -54,7 +59,17 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Events({ events }: { events: Event[] }) {
+export default function Events({ events }: Props) {
+    const { flash } = usePage<SharedData>().props;
+
+    useEffect(() => {
+        if (flash?.success) {
+            const toastId = toast.success(flash.success);
+            const timer = setTimeout(() => toast.dismiss(toastId), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [flash]);
+
     const [statusFilter, setStatusFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
 
