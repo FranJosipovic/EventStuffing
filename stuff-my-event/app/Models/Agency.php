@@ -42,4 +42,9 @@ class Agency extends Model
         return $this->hasMany(User::class, 'agency_id')
                     ->where('id', '!=', $this->owner_id);
     }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
+    }
 }

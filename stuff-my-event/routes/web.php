@@ -5,16 +5,11 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
-use App\UserRole;
+use App\Models\Enums\UserRole;
 use Illuminate\Support\Facades\Auth;
 
-Route::middleware(['auth', 'role:agency_owner'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
-});
-
-Route::middleware(['auth', 'role:staff_member'])->prefix('staff')->group(function () {
-    Route::get('/dashboard', [StaffDashboardController::class, 'index'])->name('staff.dashboard');
-});
+require __DIR__.'/admin.php';
+require __DIR__.'/staff.php';
 
 Route::get('/', function () {
     return Inertia::render('welcome', [

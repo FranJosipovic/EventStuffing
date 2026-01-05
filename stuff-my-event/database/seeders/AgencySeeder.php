@@ -2,18 +2,16 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Agency;
 use App\Models\User;
-use App\UserRole;
+use App\Models\Enums\UserRole;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Event;
+use App\Models\Enums\EventStatus;
 
 class AgencySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         // Create the agency owner
@@ -57,7 +55,59 @@ class AgencySeeder extends Seeder
             User::create($memberData);
         }
 
-        $this->command->info('Agency created with 1 owner and 2 staff members!');
+        // Create sample events
+        $events = [
+            [
+                'name' => 'Corporate Annual Meeting',
+                'description' => 'Large corporate event with presentations and networking.',
+                'date' => now()->addDays(15),
+                'time_from' => '09:00',
+                'time_to' => '17:00',
+                'location' => 'Manhattan Convention Center, New York',
+                'required_staff_count' => 10,
+                'status' => EventStatus::NEW,
+                'agency_id' => $agency->id,
+            ],
+            [
+                'name' => 'Wedding Reception',
+                'description' => 'Elegant wedding reception for 200 guests.',
+                'date' => now()->addDays(30),
+                'time_from' => '18:00',
+                'time_to' => '23:00',
+                'location' => 'Grand Hotel Ballroom, New York',
+                'required_staff_count' => 8,
+                'status' => EventStatus::STAFFING,
+                'agency_id' => $agency->id,
+            ],
+            [
+                'name' => 'Product Launch Event',
+                'description' => 'Tech product launch with media coverage.',
+                'date' => now()->addDays(7),
+                'time_from' => '19:00',
+                'time_to' => '22:00',
+                'location' => 'Tech Hub, Brooklyn',
+                'required_staff_count' => 5,
+                'status' => EventStatus::READY,
+                'agency_id' => $agency->id,
+            ],
+            [
+                'name' => 'Charity Gala',
+                'description' => 'Fundraising gala for local charity.',
+                'date' => now()->subDays(10),
+                'time_from' => '18:00',
+                'time_to' => '23:00',
+                'location' => 'Plaza Hotel, New York',
+                'required_staff_count' => 12,
+                'status' => EventStatus::COMPLETED,
+                'agency_id' => $agency->id,
+            ],
+        ];
+
+        foreach ($events as $eventData) {
+            Event::create($eventData);
+        }
+
+        $this->command->info('Agency created with 1 owner, 2 staff members, and 4 sample events!');
         $this->command->info('Owner: owner@agency.com');
         $this->command->info('Staff 1: jane@agency.com');
         $this->command->info('Staff 2: bob@agency.com');
