@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Agency;
 use App\Models\Enums\EventStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Event extends Model
 {
@@ -19,6 +20,8 @@ class Event extends Model
         'time_from',
         'time_to',
         'location',
+        'location_latitude',
+        'location_longitude',
         'required_staff_count',
         'status',
         'agency_id',
@@ -31,13 +34,69 @@ class Event extends Model
             'time_from' => 'datetime:H:i',
             'time_to' => 'datetime:H:i',
             'status' => EventStatus::class,
+            'location_latitude' => 'decimal:7',
+            'location_longitude' => 'decimal:7',
         ];
     }
 
-    // Relationship: Event belongs to an Agency
     public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class);
+    }
+
+    public function requirements(): HasOne
+    {
+        return $this->hasOne(EventRequirement::class);
+    }
+
+    public function compensation(): HasOne
+    {
+        return $this->hasOne(EventCompensation::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(EventMessage::class);
+    }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class);
+    }
+
+    // Get assigned staff (all statuses)
+    public function assignedStaff(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class);
+    }
+
+    // Get only accepted staff
+    public function acceptedStaff(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class)
+            ->where('status', \App\Models\Enums\AssignmentStatus::ACCEPTED);
+    }
+
+    // Get only pending assignments
+    public function pendingAssignments(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class)
+            ->where('status', \App\Models\Enums\AssignmentStatus::PENDING);
+    }
+
+    public function getAcceptedStaffCountAttribute(): int
+    {
+        return $this->acceptedStaff()->count();
+    }
+
+    public function getPendingStaffCountAttribute(): int
+    {
+        return $this->pendingAssignments()->count();
+    }
+
+    public function isFullyStaffed(): bool
+    {
+        return $this->accepted_staff_count >= $this->required_staff_count;
     }
 
     // Helper methods
@@ -61,7 +120,6 @@ class Event extends Model
         return $this->status === EventStatus::COMPLETED;
     }
 
-    // Get formatted date and time
     public function getFormattedDateAttribute(): string
     {
         return $this->date->format('d.m.Y');
@@ -70,5 +128,19 @@ class Event extends Model
     public function getFormattedTimeRangeAttribute(): string
     {
         return $this->time_from->format('H:i') . ' - ' . $this->time_to->format('H:i');
+    }
+
+    public function hasCoordinates(): bool
+    {
+        return $this->location_latitude !== null && $this->location_longitude !== null;
+    }
+
+    public function getGoogleMapsUrlAttribute(): ?string
+    {
+        if (!$this->hasCoordinates()) {
+            return null;
+        }
+
+        return "https://www.google.com/maps?q={$this->location_latitude},{$this->location_longitude}";
     }
 }

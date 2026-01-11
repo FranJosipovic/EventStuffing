@@ -19,6 +19,10 @@
             })();
         </script>
 
+        <script async
+            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1_vEVwE8Y8njFu6dnqTjf8u1JtogW1Ts&loading=async&libraries=places&callback=initMap">
+        </script>
+
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {

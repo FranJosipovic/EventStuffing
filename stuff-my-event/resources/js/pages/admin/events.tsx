@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { SharedData, type BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { CalendarIcon, Clock, MapPin, Search, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -46,6 +46,7 @@ export interface Event {
     status_label: string;
     status_color: string;
     required_staff_count: number;
+    accepted_staff_count: number;
 }
 
 interface Props {
@@ -268,9 +269,7 @@ export default function Events({ events }: Props) {
                                     filteredEvents.map((event) => {
                                         const staffingPercentage =
                                             event.required_staff_count > 0
-                                                ? ((event.required_staff_count -
-                                                      event.required_staff_count /
-                                                          2) /
+                                                ? (event.accepted_staff_count /
                                                       event.required_staff_count) *
                                                   100
                                                 : 0;
@@ -314,9 +313,9 @@ export default function Events({ events }: Props) {
                                                         <div className="flex items-center justify-between text-sm">
                                                             <span className="flex items-center gap-1 text-foreground">
                                                                 <Users className="h-4 w-4" />
-                                                                {event.required_staff_count -
-                                                                    event.required_staff_count /
-                                                                        2}
+                                                                {
+                                                                    event.accepted_staff_count
+                                                                }
                                                                 /
                                                                 {
                                                                     event.required_staff_count
@@ -348,12 +347,16 @@ export default function Events({ events }: Props) {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
+                                                    <Link
+                                                        href={`/admin/events/${event.id}`}
                                                     >
-                                                        View Details
-                                                    </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                        >
+                                                            View Details
+                                                        </Button>
+                                                    </Link>
                                                 </TableCell>
                                             </TableRow>
                                         );

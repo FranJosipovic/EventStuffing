@@ -14,11 +14,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
+import { Autocomplete, useLoadScript } from '@react-google-maps/api';
 import { Plus } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useRef, useState } from 'react';
+
+const libraries: 'places'[] = ['places'];
 
 export function CreateEventDialog() {
     const [open, setOpen] = useState(false);
+
+    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(
+        null,
+    );
+
+    const { isLoaded } = useLoadScript({
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+        libraries,
+    });
 
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -27,8 +39,28 @@ export function CreateEventDialog() {
         time_from: '',
         time_to: '',
         location: '',
+        location_latitude: 0,
+        location_longitude: 0,
         required_staff_count: 1,
     });
+
+    const onPlaceChanged = () => {
+        if (autocompleteRef.current) {
+            const place = autocompleteRef.current.getPlace();
+
+            console.log('Selected place:', place);
+            console.log('Selected place:', place.geometry?.location?.lat());
+
+            if (place.geometry?.location) {
+                setData({
+                    ...data,
+                    location: place.formatted_address || place.name || '',
+                    location_latitude: place.geometry.location.lat(),
+                    location_longitude: place.geometry.location.lng(),
+                });
+            }
+        }
+    };
 
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -115,15 +147,18 @@ export function CreateEventDialog() {
                                 )}
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="time_from">Start Time</Label>
+                                <Label htmlFor="time_from">
+                                    Start Time (24h)
+                                </Label>
                                 <Input
                                     id="time_from"
-                                    type="time"
+                                    type="text"
                                     value={data.time_from}
                                     onChange={(e) =>
                                         setData('time_from', e.target.value)
                                     }
-                                    step="60"
+                                    placeholder="e.g., 09:00"
+                                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                                     required
                                 />
                                 {errors.time_from && (
@@ -133,15 +168,16 @@ export function CreateEventDialog() {
                                 )}
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="time_to">End Time</Label>
+                                <Label htmlFor="time_to">End Time (24h)</Label>
                                 <Input
                                     id="time_to"
-                                    type="time"
+                                    type="text"
                                     value={data.time_to}
                                     onChange={(e) =>
                                         setData('time_to', e.target.value)
                                     }
-                                    step="60"
+                                    placeholder="e.g., 17:00"
+                                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                                     required
                                 />
                                 {errors.time_to && (
@@ -154,15 +190,29 @@ export function CreateEventDialog() {
 
                         <div className="grid gap-2">
                             <Label htmlFor="location">Location</Label>
-                            <Input
-                                id="location"
-                                value={data.location}
-                                onChange={(e) =>
-                                    setData('location', e.target.value)
-                                }
-                                placeholder="e.g., Convention Center, Downtown"
-                                required
-                            />
+                            {isLoaded && (
+                                <Autocomplete
+                                    onLoad={(autocomplete) => {
+                                        autocompleteRef.current = autocomplete;
+                                    }}
+                                    onPlaceChanged={onPlaceChanged}
+                                    options={{
+                                        types: ['establishment', 'geocode'],
+                                        // Optionally restrict to a country:
+                                        // componentRestrictions: { country: 'us' },
+                                    }}
+                                >
+                                    <Input
+                                        id="location"
+                                        value={data.location}
+                                        onChange={(e) =>
+                                            setData('location', e.target.value)
+                                        }
+                                        placeholder="Search for a location..."
+                                        required
+                                    />
+                                </Autocomplete>
+                            )}
                             {errors.location && (
                                 <p className="text-sm text-red-600">
                                     {errors.location}

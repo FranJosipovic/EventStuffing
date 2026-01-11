@@ -10,6 +10,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use App\Models\Enums\UserRole;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Enums\AssignmentStatus;
 
 class User extends Authenticatable
 {
@@ -76,5 +78,22 @@ class User extends Authenticatable
     public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class);
+    }
+
+    public function eventAssignments(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class);
+    }
+
+    public function acceptedEvents(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class)
+            ->where('status', AssignmentStatus::ACCEPTED);
+    }
+
+    public function pendingEvents(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class)
+            ->where('status', AssignmentStatus::PENDING);
     }
 }
