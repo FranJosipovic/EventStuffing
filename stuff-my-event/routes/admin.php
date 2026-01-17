@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
+use App\Http\Controllers\EventMessageController;
 
 Route::middleware(['auth', 'role:agency_owner'])->prefix('admin')->group(function () {
     //dashboard route

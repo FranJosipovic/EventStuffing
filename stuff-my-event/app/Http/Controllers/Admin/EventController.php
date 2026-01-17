@@ -176,7 +176,7 @@ class EventController extends Controller
                 'formatted_amount' => $event->compensation->formatted_amount,
                 'notes' => $event->compensation->notes,
             ] : null,
-            'messages' => $event->messages->map(fn($message) => [
+            'initial_messages' => $event->messages->map(fn($message) => [
                 'id' => $message->id,
                 'user_id' => $message->user_id,
                 'user_name' => $message->user->name,
@@ -189,6 +189,7 @@ class EventController extends Controller
                 'id' => $assignment->id,
                 'user_id' => $assignment->user_id,
                 'user_name' => $assignment->user->name,
+                'user_role' => $assignment->user->role->value,
                 'status' => $assignment->status,
                 'notes' => $assignment->notes,
                 'responded_at' => $assignment->responded_at ? $assignment->responded_at->format('M d, Y H:i') : null,

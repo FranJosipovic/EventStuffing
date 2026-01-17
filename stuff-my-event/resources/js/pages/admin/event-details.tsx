@@ -1,4 +1,11 @@
+import {
+    AssignedStaff,
+    StaffAssignmentDialog,
+    StaffRequest,
+} from '@/components/assignements/staff-assignment-dialog';
+import EventChat from '@/components/chat/event-chat';
 import { EditableField } from '@/components/editable-field';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,21 +15,20 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
+import { useEcho } from '@laravel/echo-react';
+import axios from 'axios';
 import {
-    Building,
     CalendarIcon,
     ChevronLeft,
     Clock,
     DollarSign,
     FileText,
     MapPin,
-    Send,
     Shirt,
     Users,
 } from 'lucide-react';
@@ -70,9 +76,9 @@ interface Compensation {
     notes: string;
 }
 
-interface Message {
-    id: string;
-    user_id: string;
+export interface Message {
+    id: number;
+    user_id: number;
     user_name: string;
     user_role: string;
     message: string;
@@ -84,6 +90,7 @@ interface Assignment {
     id: string;
     user_id: string;
     user_name: string;
+    user_role: string;
     status: 'pending' | 'accepted' | 'rejected';
     notes: string | null;
     responded_at: string | null;
@@ -94,19 +101,30 @@ interface Props {
     agency: Agency;
     requirements: EventRequirements | null;
     compensation: Compensation | null;
-    messages: Message[];
+    initial_messages: Message[];
     assignments: Assignment[];
 }
 
-export default function Events({
+export default function EventDetails({
     event,
     agency,
     requirements,
     compensation,
-    messages,
+    initial_messages,
     assignments,
 }: Props) {
-    console.log('Event Details:', compensation);
+    console.log(compensation);
+    console.log(initial_messages);
+    const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
+
+    const [messages, setMessages] = useState<Message[]>(initial_messages);
+    const [sendMessageLoading, setSendMessageLoading] = useState(false);
+
+    useEcho(`event.${event.id}`, '.message.received', (message) => {
+        console.log('New message received:', message);
+        setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Events',
@@ -143,22 +161,24 @@ export default function Events({
         });
     };
 
-    //handle chat
-    const [message, setMessage] = useState('');
-    const handleSendMessage = () => {
+    const handleSendMessage = async (
+        message: string,
+        onMessageSent: () => void,
+    ) => {
         if (!message.trim() || !event) return;
+        try {
+            setSendMessageLoading(true);
+            const response = await axios.post(`/events/${event.id}/messages`, {
+                message: message,
+            });
 
-        const newMessage = {
-            id: String(messages.length + 1),
-            eventId: event.id,
-            senderId: 'admin',
-            senderName: 'You',
-            senderRole: 'Manager',
-            message: message.trim(),
-            timestamp: new Date().toISOString(),
-        };
-
-        setMessage('');
+            console.log('Message sent successfully:', response.data);
+            onMessageSent();
+        } catch (error) {
+            console.error('Error sending message:', error);
+        } finally {
+            setSendMessageLoading(false);
+        }
     };
 
     //event updates
@@ -271,21 +291,6 @@ export default function Events({
                                                 )
                                             }
                                             label="Location"
-                                        />
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        <Building className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                                        <EditableField
-                                            value="TechCorp Inc"
-                                            onSave={(val) => {}}
-                                            // value={event.client}
-                                            // onSave={(value) =>
-                                            //     handleUpdateField(
-                                            //         'client',
-                                            //         value,
-                                            //     )
-                                            // }
-                                            label="Client"
                                         />
                                     </div>
                                     <div className="flex items-start gap-3">
@@ -509,47 +514,48 @@ export default function Events({
                             </CardHeader>
                             <CardContent>
                                 Staff assignment part
-                                {/* {assignedStaffDetails.length === 0 ? (
+                                {assignments.length === 0 ? (
                                     <p className="py-8 text-center text-muted-foreground">
                                         No staff assigned yet
                                     </p>
                                 ) : (
                                     <div className="space-y-3">
-                                        {assignedStaffDetails.map((staff) => (
-                                            <div
-                                                key={staff.id}
-                                                className="flex items-center justify-between rounded-lg border p-3"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar>
-                                                        <AvatarFallback>
-                                                            {staff.name
-                                                                .split(' ')
-                                                                .map(
-                                                                    (n) => n[0],
-                                                                )
-                                                                .join('')}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <p className="font-medium text-foreground">
-                                                            {staff.name}
-                                                        </p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {staff.role}
-                                                        </p>
+                                        {assignments
+                                            .filter(
+                                                (a) => a.status === 'accepted',
+                                            )
+                                            .map((staff) => (
+                                                <div
+                                                    key={staff.id}
+                                                    className="flex items-center justify-between rounded-lg border p-3"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar>
+                                                            <AvatarFallback>
+                                                                {staff.user_name
+                                                                    .split(' ')
+                                                                    .map(
+                                                                        (n) =>
+                                                                            n[0],
+                                                                    )
+                                                                    .join('')}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="font-medium text-foreground">
+                                                                {
+                                                                    staff.user_name
+                                                                }
+                                                            </p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {
+                                                                    staff.user_role
+                                                                }
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-medium text-foreground">
-                                                        ${staff.hourlyRate}/hr
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        ⭐ {staff.rating}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
                                     </div>
                                 )}
                                 <Button
@@ -558,86 +564,35 @@ export default function Events({
                                     onClick={() => setIsStaffDialogOpen(true)}
                                 >
                                     Manage Staff Assignment
-                                </Button> */}
+                                </Button>
                             </CardContent>
                         </Card>
                     </div>
 
                     {/* Right Sidebar - Event Chat */}
                     <div className="lg:col-span-1">
-                        <Card className="sticky top-6 flex h-[calc(100vh-120px)] flex-col">
-                            <CardHeader className="flex-shrink-0">
-                                <CardTitle>Event Chat</CardTitle>
-                                <CardDescription>
-                                    Communication with team members
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-                                <div className="flex-1 space-y-4 overflow-y-auto px-6">
-                                    {messages.length === 0 ? (
-                                        <p className="py-8 text-center text-sm text-muted-foreground">
-                                            No messages yet
-                                        </p>
-                                    ) : (
-                                        messages.map((msg) => (
-                                            <div
-                                                key={msg.id}
-                                                className="space-y-1"
-                                            >
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="text-sm font-semibold text-foreground">
-                                                        {msg.user_name}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {msg.user_role}
-                                                    </span>
-                                                </div>
-                                                <div className="rounded-lg bg-muted/50 p-3">
-                                                    <p className="text-sm text-foreground">
-                                                        {msg.message}
-                                                    </p>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {/* {formatTimestamp(
-                                                        msg.created_at,
-                                                    )} */}
-                                                    {msg.created_at_full}
-                                                </p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                                <div className="flex-shrink-0 border-t p-4">
-                                    <div className="flex gap-2">
-                                        <Input
-                                            placeholder="Type a message..."
-                                            value={message}
-                                            onChange={(e) =>
-                                                setMessage(e.target.value)
-                                            }
-                                            onKeyDown={(e) => {
-                                                if (
-                                                    e.key === 'Enter' &&
-                                                    !e.shiftKey
-                                                ) {
-                                                    e.preventDefault();
-                                                    handleSendMessage();
-                                                }
-                                            }}
-                                        />
-                                        <Button
-                                            onClick={handleSendMessage}
-                                            size="icon"
-                                        >
-                                            <Send className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <EventChat
+                            messages={messages}
+                            loading={sendMessageLoading}
+                            handleSendMessage={handleSendMessage}
+                        />
                     </div>
                 </div>
             </main>
+
+            <StaffAssignmentDialog
+                open={isStaffDialogOpen}
+                onOpenChange={setIsStaffDialogOpen}
+                assignedStaff={assignments
+                    .filter((a) => a.status === 'accepted')
+                    .map((a) => a as AssignedStaff)}
+                staffRequests={assignments
+                    .filter((a) => a.status === 'pending')
+                    .map((a) => a as StaffRequest)}
+                onAcceptRequest={() => {}}
+                onRejectRequest={() => {}}
+                onRemoveStaff={() => {}}
+            />
         </AppLayout>
     );
 }
