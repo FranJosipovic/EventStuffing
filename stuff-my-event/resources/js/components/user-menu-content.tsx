@@ -18,9 +18,19 @@ interface UserMenuContentProps {
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
 
-    const handleLogout = () => {
+    const handleLogout = (e: React.MouseEvent) => {
+        e.preventDefault();
         cleanup();
-        router.flushAll();
+        router.post(
+            '/logout',
+            {},
+            {
+                onFinish: () => {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                },
+            },
+        );
     };
 
     return (
