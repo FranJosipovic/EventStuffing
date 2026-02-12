@@ -131,8 +131,8 @@ class EventController extends Controller
             'agency',
             'requirements',
             'compensation',
-            'messages',
-            'assignments'
+            'messages.user.userRole',
+            'assignments.user.userRole'
         ]);
 
         return Inertia::render('admin/event-details', [
@@ -180,7 +180,7 @@ class EventController extends Controller
                 'id' => $message->id,
                 'user_id' => $message->user_id,
                 'user_name' => $message->user->name,
-                'user_role' => $message->user->role->value,
+                'user_role' => $message->user->getRoleValue(),
                 'message' => $message->message,
                 'created_at' => $message->created_at->diffForHumans(),
                 'created_at_full' => $message->created_at->format('M d, Y H:i'),
@@ -189,8 +189,8 @@ class EventController extends Controller
                 'id' => $assignment->id,
                 'user_id' => $assignment->user_id,
                 'user_name' => $assignment->user->name,
-                'user_role' => $assignment->user->role->value,
-                'status' => $assignment->status,
+                'user_role' => $assignment->user->getRoleValue(),
+                'status' => $assignment->status->value,
                 'notes' => $assignment->notes,
                 'responded_at' => $assignment->responded_at ? $assignment->responded_at->format('M d, Y H:i') : null,
             ])

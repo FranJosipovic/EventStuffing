@@ -113,8 +113,6 @@ export default function EventDetails({
     initial_messages,
     assignments,
 }: Props) {
-    console.log(compensation);
-    console.log(initial_messages);
     const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
 
     const [messages, setMessages] = useState<Message[]>(initial_messages);
@@ -298,7 +296,7 @@ export default function EventDetails({
                                         <EditableField
                                             value={
                                                 compensation?.type === 'hourly'
-                                                    ? `$${compensation.amount}/hour`
+                                                    ? `$${compensation?.amount}/hour`
                                                     : `$${compensation?.amount} fixed`
                                             }
                                             onSave={(value) => {

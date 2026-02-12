@@ -28,6 +28,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'role_id',
         'agency_id',
     ];
 
@@ -58,15 +59,53 @@ class User extends Authenticatable
         ];
     }
 
+    // Relationships
+    public function userRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
     // Helper methods
     public function isAgencyOwner(): bool
     {
+        // Check both role_id (new) and role enum (old) for backwards compatibility
+        if ($this->role_id && $this->userRole) {
+            return $this->userRole->name === 'agency_owner';
+        }
         return $this->role === UserRole::AGENCY_OWNER;
     }
 
     public function isStaffMember(): bool
     {
+        // Check both role_id (new) and role enum (old) for backwards compatibility
+        if ($this->role_id && $this->userRole) {
+            return $this->userRole->name === 'staff_member';
+        }
         return $this->role === UserRole::STAFF_MEMBER;
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->role_id && $this->userRole) {
+            return $this->userRole->hasPermission($permission);
+        }
+        return false;
+    }
+
+    public function getRoleName(): string
+    {
+        if ($this->role_id && $this->userRole) {
+            return $this->userRole->label;
+        }
+        return $this->role?->label() ?? 'Unknown';
+    }
+
+    public function getRoleValue(): string
+    {
+        if ($this->role_id && $this->userRole) {
+            return $this->userRole->name;
+        }
+        return $this->role?->value ?? 'unknown';
     }
 
     public function ownedAgency(): HasOne
@@ -78,6 +117,11 @@ class User extends Authenticatable
     public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class);
+    }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(EventAssignment::class);
     }
 
     public function eventAssignments(): HasMany

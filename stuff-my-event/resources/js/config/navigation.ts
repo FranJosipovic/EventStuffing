@@ -10,6 +10,7 @@ import {
     LayoutGrid,
     Settings,
     Users,
+    Shield,
 } from 'lucide-react';
 
 export const agencyOwnerNavItems: NavItem[] = [
@@ -19,14 +20,14 @@ export const agencyOwnerNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Agency',
-        href: '/admin/agency',
-        icon: Building2,
-    },
-    {
         title: 'Staff Management',
         href: '/admin/staff',
         icon: Users,
+    },
+    {
+        title: 'Role Management',
+        href: '/admin/roles',
+        icon: Shield,
     },
     {
         title: 'Events',

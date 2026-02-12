@@ -64,6 +64,11 @@ class Event extends Model
         return $this->hasMany(EventAssignment::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(EventPayment::class);
+    }
+
     // Get assigned staff (all statuses)
     public function assignedStaff(): HasMany
     {

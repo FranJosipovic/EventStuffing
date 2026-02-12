@@ -6,6 +6,7 @@ use App\Models\Enums\AssignmentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventAssignment extends Model
 {
@@ -36,6 +37,13 @@ class EventAssignment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(EventPayment::class)
+            ->where('event_id', $this->event_id)
+            ->where('user_id', $this->user_id);
     }
 
     // Helper methods

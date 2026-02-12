@@ -9,6 +9,7 @@ use App\Models\Agency;
 use App\Models\Event;
 use App\Models\EventAssignment;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -16,12 +17,17 @@ class AgencySeeder extends Seeder
 {
     public function run(): void
     {
+        // Get roles from database
+        $agencyOwnerRole = Role::where('name', 'agency_owner')->first();
+        $staffMemberRole = Role::where('name', 'staff_member')->first();
+
         // Create the agency owner
         $owner = User::create([
             'name' => 'John Doe',
             'email' => 'owner@agency.com',
             'password' => Hash::make('password'),
             'role' => UserRole::AGENCY_OWNER,
+            'role_id' => $agencyOwnerRole->id,
         ]);
 
         // Create the agency
@@ -42,6 +48,7 @@ class AgencySeeder extends Seeder
                 'email' => 'jane@agency.com',
                 'password' => Hash::make('password'),
                 'role' => UserRole::STAFF_MEMBER,
+                'role_id' => $staffMemberRole->id,
                 'agency_id' => $agency->id,
             ]),
             User::create([
@@ -49,6 +56,7 @@ class AgencySeeder extends Seeder
                 'email' => 'bob@agency.com',
                 'password' => Hash::make('password'),
                 'role' => UserRole::STAFF_MEMBER,
+                'role_id' => $staffMemberRole->id,
                 'agency_id' => $agency->id,
             ]),
             User::create([
@@ -56,6 +64,7 @@ class AgencySeeder extends Seeder
                 'email' => 'alice@agency.com',
                 'password' => Hash::make('password'),
                 'role' => UserRole::STAFF_MEMBER,
+                'role_id' => $staffMemberRole->id,
                 'agency_id' => $agency->id,
             ]),
             User::create([
@@ -63,6 +72,7 @@ class AgencySeeder extends Seeder
                 'email' => 'mike@agency.com',
                 'password' => Hash::make('password'),
                 'role' => UserRole::STAFF_MEMBER,
+                'role_id' => $staffMemberRole->id,
                 'agency_id' => $agency->id,
             ]),
             User::create([
@@ -70,6 +80,7 @@ class AgencySeeder extends Seeder
                 'email' => 'sarah@agency.com',
                 'password' => Hash::make('password'),
                 'role' => UserRole::STAFF_MEMBER,
+                'role_id' => $staffMemberRole->id,
                 'agency_id' => $agency->id,
             ]),
         ];
@@ -125,6 +136,19 @@ class AgencySeeder extends Seeder
                 'location_latitude' => 40.76478,
                 'location_longitude' => -73.97435,
                 'required_staff_count' => 12,
+                'status' => EventStatus::COMPLETED,
+                'agency_id' => $agency->id,
+            ],
+            [
+                'name' => 'Tech Conference 2026',
+                'description' => 'Annual technology conference with workshops and keynotes.',
+                'date' => now()->subDays(5),
+                'time_from' => '08:00',
+                'time_to' => '18:00',
+                'location' => 'Javits Center, New York',
+                'location_latitude' => 40.75575,
+                'location_longitude' => -74.00206,
+                'required_staff_count' => 15,
                 'status' => EventStatus::COMPLETED,
                 'agency_id' => $agency->id,
             ],
@@ -258,6 +282,38 @@ class AgencySeeder extends Seeder
             'responded_at' => now()->subDays(11),
         ]);
 
+        // Event 5: Tech Conference 2026 (completed) - Most staff worked
+        EventAssignment::create([
+            'event_id' => $events[4]->id,
+            'user_id' => $staffMembers[0]->id, // Jane - Accepted
+            'status' => AssignmentStatus::ACCEPTED,
+            'responded_at' => now()->subDays(8),
+        ]);
+        EventAssignment::create([
+            'event_id' => $events[4]->id,
+            'user_id' => $staffMembers[1]->id, // Bob - Accepted
+            'status' => AssignmentStatus::ACCEPTED,
+            'responded_at' => now()->subDays(8),
+        ]);
+        EventAssignment::create([
+            'event_id' => $events[4]->id,
+            'user_id' => $staffMembers[2]->id, // Alice - Accepted
+            'status' => AssignmentStatus::ACCEPTED,
+            'responded_at' => now()->subDays(7),
+        ]);
+        EventAssignment::create([
+            'event_id' => $events[4]->id,
+            'user_id' => $staffMembers[3]->id, // Mike - Accepted
+            'status' => AssignmentStatus::ACCEPTED,
+            'responded_at' => now()->subDays(7),
+        ]);
+        EventAssignment::create([
+            'event_id' => $events[4]->id,
+            'user_id' => $staffMembers[4]->id, // Sarah - Accepted
+            'status' => AssignmentStatus::ACCEPTED,
+            'responded_at' => now()->subDays(6),
+        ]);
+
         $this->command->info('Agency created successfully!');
         $this->command->info('');
         $this->command->info('Users:');
@@ -265,7 +321,7 @@ class AgencySeeder extends Seeder
         $this->command->info('  Staff: jane@agency.com, bob@agency.com, alice@agency.com, mike@agency.com, sarah@agency.com');
         $this->command->info('  Password for all: password');
         $this->command->info('');
-        $this->command->info('Events created: 4');
+        $this->command->info('Events created: 5 (2 completed for payroll testing)');
         $this->command->info('Event assignments created with mixed statuses (pending, accepted, rejected)');
     }
 }

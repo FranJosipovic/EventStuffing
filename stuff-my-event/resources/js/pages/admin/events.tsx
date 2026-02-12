@@ -67,6 +67,7 @@ export default function Events({ events }: Props) {
         if (flash?.success) {
             const toastId = toast.success(flash.success);
             const timer = setTimeout(() => toast.dismiss(toastId), 5000);
+            console.log(events)
             return () => clearTimeout(timer);
         }
     }, [flash]);
