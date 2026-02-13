@@ -1,16 +1,14 @@
 import { type NavItem } from '@/types';
 import {
-    BookOpen,
     Building2,
     Calendar,
     Clock,
     DollarSign,
     FileText,
-    Folder,
     LayoutGrid,
     Settings,
-    Users,
     Shield,
+    Users,
 } from 'lucide-react';
 
 export const agencyOwnerNavItems: NavItem[] = [
@@ -44,11 +42,6 @@ export const agencyOwnerNavItems: NavItem[] = [
         href: '/admin/reports',
         icon: FileText,
     },
-    {
-        title: 'Settings',
-        href: '/admin/settings',
-        icon: Settings,
-    },
 ];
 
 export const staffMemberNavItems: NavItem[] = [
@@ -79,18 +72,7 @@ export const staffMemberNavItems: NavItem[] = [
     },
 ];
 
-export const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+export const footerNavItems: NavItem[] = [];
 
 export function getNavItemsForRole(role: string): NavItem[] {
     switch (role) {
