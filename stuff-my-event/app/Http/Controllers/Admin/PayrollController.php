@@ -34,6 +34,7 @@ class PayrollController extends Controller
             ->where('status', EventStatus::COMPLETED)
             ->whereDoesntHave('payments')
             ->with([
+                'compensation',
                 'assignments' => function ($query) {
                     $query->where('status', AssignmentStatus::ACCEPTED)
                         ->with('user');
@@ -43,12 +44,15 @@ class PayrollController extends Controller
             ->get()
             ->map(function ($event) {
                 // Calculate hours worked from event time
-                $hoursWorked = $event->time_from && $event->time_to 
-                    ? $event->time_from->diffInHours($event->time_to, false) 
+                $hoursWorked = $event->time_from && $event->time_to
+                    ? $event->time_from->diffInHours($event->time_to, false)
                     : 0;
 
                 // Check if this event has already been paid
                 $hasBeenPaid = EventPayment::where('event_id', $event->id)->exists();
+
+                // Get default hourly rate from event compensation
+                $defaultHourlyRate = $event->compensation?->amount ?? 0;
 
                 return [
                     'id' => $event->id,
@@ -59,13 +63,15 @@ class PayrollController extends Controller
                     'time_to' => $event->time_to?->format('H:i'),
                     'hours_worked' => $hoursWorked,
                     'has_been_paid' => $hasBeenPaid,
-                    'staff' => $event->assignments->map(function ($assignment) use ($hoursWorked, $event) {
+                    'default_hourly_rate' => (float) $defaultHourlyRate,
+                    'compensation_type' => $event->compensation?->type ?? 'hourly',
+                    'staff' => $event->assignments->map(function ($assignment) use ($hoursWorked, $event, $defaultHourlyRate) {
                         // Get payments for this user on this event
                         $payments = EventPayment::where('event_id', $event->id)
                             ->where('user_id', $assignment->user_id)
                             ->orderBy('paid_at', 'desc')
                             ->get();
-                        
+
                         $totalPaid = $payments->sum('amount');
                         $lastPayment = $payments->first();
 
@@ -86,8 +92,8 @@ class PayrollController extends Controller
 
         // Calculate staff summary (total earnings per staff member)
         $staffSummary = EventPayment::whereHas('event', function ($query) use ($agency) {
-                $query->where('agency_id', $agency->id);
-            })
+            $query->where('agency_id', $agency->id);
+        })
             ->with('user')
             ->select('user_id', DB::raw('SUM(amount) as total_earned'), DB::raw('COUNT(*) as payment_count'))
             ->groupBy('user_id')

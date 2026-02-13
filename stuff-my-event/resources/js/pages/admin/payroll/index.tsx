@@ -1,20 +1,26 @@
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-    DollarSign, 
-    Calendar, 
-    Clock, 
-    Users,
+import {
+    Calendar,
     CheckCircle,
+    Clock,
+    DollarSign,
     Loader2,
-    TrendingUp
+    TrendingUp,
+    Users,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -45,6 +51,8 @@ interface Event {
     time_to: string;
     hours_worked: number;
     has_been_paid: boolean;
+    default_hourly_rate: number;
+    compensation_type: string;
     staff: Staff[];
 }
 
@@ -84,28 +92,48 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
         }
     }, [flash]);
 
-    // Initialize payment data with last rates
+    // Initialize payment data with event's default rate or last payment rate
     useEffect(() => {
         const initialData: PaymentData = {};
-        events.forEach(event => {
+        events.forEach((event) => {
             initialData[event.id] = {};
-            event.staff.forEach(staff => {
-                const hourlyRate = staff.last_hourly_rate || 0;
-                initialData[event.id][staff.user_id] = {
-                    hourlyRate,
-                    amount: hourlyRate * event.hours_worked,
-                };
+            event.staff.forEach((staff) => {
+                if (event.compensation_type === 'fixed') {
+                    // Fixed: use the fixed amount directly
+                    const fixedAmount =
+                        staff.last_hourly_rate ||
+                        event.default_hourly_rate ||
+                        0;
+                    initialData[event.id][staff.user_id] = {
+                        hourlyRate: 0,
+                        amount: fixedAmount,
+                    };
+                } else {
+                    // Hourly: calculate based on hours × rate
+                    const hourlyRate =
+                        staff.last_hourly_rate ||
+                        event.default_hourly_rate ||
+                        0;
+                    initialData[event.id][staff.user_id] = {
+                        hourlyRate,
+                        amount: hourlyRate * event.hours_worked,
+                    };
+                }
             });
         });
         setPaymentData(initialData);
     }, [events]);
 
-    const handleHourlyRateChange = (eventId: number, userId: number, rate: string) => {
+    const handleHourlyRateChange = (
+        eventId: number,
+        userId: number,
+        rate: string,
+    ) => {
         const numRate = parseFloat(rate) || 0;
-        const event = events.find(e => e.id === eventId);
+        const event = events.find((e) => e.id === eventId);
         const hoursWorked = event?.hours_worked || 0;
 
-        setPaymentData(prev => ({
+        setPaymentData((prev) => ({
             ...prev,
             [eventId]: {
                 ...prev[eventId],
@@ -117,11 +145,30 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
         }));
     };
 
+    const handleFixedAmountChange = (
+        eventId: number,
+        userId: number,
+        amount: string,
+    ) => {
+        const numAmount = parseFloat(amount) || 0;
+
+        setPaymentData((prev) => ({
+            ...prev,
+            [eventId]: {
+                ...prev[eventId],
+                [userId]: {
+                    hourlyRate: 0,
+                    amount: numAmount,
+                },
+            },
+        }));
+    };
+
     const handleProcessPayment = (eventId: number) => {
-        const event = events.find(e => e.id === eventId);
+        const event = events.find((e) => e.id === eventId);
         if (!event) return;
 
-        const payments = event.staff.map(staff => ({
+        const payments = event.staff.map((staff) => ({
             assignment_id: staff.assignment_id,
             user_id: staff.user_id,
             hours_worked: event.hours_worked,
@@ -129,10 +176,10 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
             amount: paymentData[eventId]?.[staff.user_id]?.amount || 0,
         }));
 
-        // Validate that all rates are set
-        const invalidPayments = payments.filter(p => p.hourly_rate <= 0);
+        // Validate that all amounts are set
+        const invalidPayments = payments.filter((p) => p.amount <= 0);
         if (invalidPayments.length > 0) {
-            toast.error('Please set hourly rate for all staff members');
+            toast.error('Please set amount for all staff members');
             return;
         }
 
@@ -151,7 +198,7 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                 onFinish: () => {
                     setProcessingEvent(null);
                 },
-            }
+            },
         );
     };
 
@@ -169,12 +216,13 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Payroll Management" />
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
-                
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Payroll Management</h1>
-                        <p className="text-muted-foreground mt-2">
+                        <h1 className="text-3xl font-bold tracking-tight">
+                            Payroll Management
+                        </h1>
+                        <p className="mt-2 text-muted-foreground">
                             Process payments for completed events
                         </p>
                     </div>
@@ -194,9 +242,11 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                             </CardContent>
                         </Card>
                     ) : (
-                        events.map(event => {
+                        events.map((event) => {
                             const eventTotal = getEventTotal(event);
-                            const alreadyPaid = getTotalStaffEarnings(event.staff);
+                            const alreadyPaid = getTotalStaffEarnings(
+                                event.staff,
+                            );
                             const isPaid = event.has_been_paid;
                             const isProcessing = processingEvent === event.id;
 
@@ -205,23 +255,44 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <CardTitle className="text-2xl">{event.name}</CardTitle>
-                                                <CardDescription className="flex items-center gap-4 mt-2">
+                                                <CardTitle className="text-2xl">
+                                                    {event.name}
+                                                </CardTitle>
+                                                <CardDescription className="mt-2 flex items-center gap-4">
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="h-4 w-4" />
                                                         {event.formatted_date}
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <Clock className="h-4 w-4" />
-                                                        {event.time_from} - {event.time_to}
+                                                        {event.time_from} -{' '}
+                                                        {event.time_to}
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <Users className="h-4 w-4" />
-                                                        {event.staff.length} staff
+                                                        {event.staff.length}{' '}
+                                                        staff
                                                     </span>
+                                                    {event.default_hourly_rate >
+                                                        0 && (
+                                                        <span className="flex items-center gap-1 text-green-600">
+                                                            <DollarSign className="h-4 w-4" />
+                                                            €
+                                                            {event.default_hourly_rate.toFixed(
+                                                                2,
+                                                            )}
+                                                            {event.compensation_type ===
+                                                            'fixed'
+                                                                ? ' (fixed)'
+                                                                : '/hr'}
+                                                        </span>
+                                                    )}
                                                 </CardDescription>
                                             </div>
-                                            <Badge variant="outline" className="text-lg px-3 py-1">
+                                            <Badge
+                                                variant="outline"
+                                                className="px-3 py-1 text-lg"
+                                            >
                                                 {event.hours_worked}h
                                             </Badge>
                                         </div>
@@ -233,71 +304,200 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                                                 <table className="w-full">
                                                     <thead>
                                                         <tr className="border-b bg-muted/50">
-                                                            <th className="text-left p-3 font-medium">Staff Member</th>
-                                                            <th className="text-center p-3 font-medium">Hours</th>
-                                                            <th className="text-center p-3 font-medium">Rate (€/hr)</th>
-                                                            <th className="text-right p-3 font-medium">Amount (€)</th>
-                                                            <th className="text-right p-3 font-medium">Already Paid</th>
+                                                            <th className="p-3 text-left font-medium">
+                                                                Staff Member
+                                                            </th>
+                                                            {event.compensation_type ===
+                                                                'hourly' && (
+                                                                <>
+                                                                    <th className="p-3 text-center font-medium">
+                                                                        Hours
+                                                                    </th>
+                                                                    <th className="p-3 text-center font-medium">
+                                                                        Rate
+                                                                        (€/hr)
+                                                                    </th>
+                                                                </>
+                                                            )}
+                                                            <th className="p-3 text-right font-medium">
+                                                                Amount (€)
+                                                            </th>
+                                                            <th className="p-3 text-right font-medium">
+                                                                Already Paid
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {event.staff.map(staff => {
-                                                            const payment = paymentData[event.id]?.[staff.user_id];
-                                                            return (
-                                                                <tr key={staff.user_id} className="border-b last:border-0">
-                                                                    <td className="p-3">
-                                                                        <div>
-                                                                            <p className="font-medium">{staff.user_name}</p>
-                                                                            <p className="text-sm text-muted-foreground">{staff.user_email}</p>
-                                                                            {staff.last_paid_at && (
-                                                                                <p className="text-xs text-muted-foreground mt-1">
-                                                                                    Last paid: {staff.last_paid_at}
+                                                        {event.staff.map(
+                                                            (staff) => {
+                                                                const payment =
+                                                                    paymentData[
+                                                                        event.id
+                                                                    ]?.[
+                                                                        staff
+                                                                            .user_id
+                                                                    ];
+                                                                const isFixed =
+                                                                    event.compensation_type ===
+                                                                    'fixed';
+                                                                return (
+                                                                    <tr
+                                                                        key={
+                                                                            staff.user_id
+                                                                        }
+                                                                        className="border-b last:border-0"
+                                                                    >
+                                                                        <td className="p-3">
+                                                                            <div>
+                                                                                <p className="font-medium">
+                                                                                    {
+                                                                                        staff.user_name
+                                                                                    }
                                                                                 </p>
-                                                                            )}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="p-3 text-center">
-                                                                        <Badge variant="outline">{event.hours_worked}h</Badge>
-                                                                    </td>
-                                                                    <td className="p-3">
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            min="0"
-                                                                            value={payment?.hourlyRate || ''}
-                                                                            onChange={(e) => handleHourlyRateChange(event.id, staff.user_id, e.target.value)}
-                                                                            className="w-24 mx-auto text-center"
-                                                                            disabled={isPaid || isProcessing}
-                                                                            placeholder="0.00"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-3 text-right">
-                                                                        <span className="font-semibold text-green-600">
-                                                                            €{(payment?.amount || 0).toFixed(2)}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="p-3 text-right">
-                                                                        <span className="text-muted-foreground">
-                                                                            €{staff.total_paid.toFixed(2)}
-                                                                            {staff.payment_count > 0 && (
-                                                                                <span className="text-xs ml-1">
-                                                                                    ({staff.payment_count}×)
+                                                                                <p className="text-sm text-muted-foreground">
+                                                                                    {
+                                                                                        staff.user_email
+                                                                                    }
+                                                                                </p>
+                                                                                {staff.last_paid_at && (
+                                                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                                                        Last
+                                                                                        paid:{' '}
+                                                                                        {
+                                                                                            staff.last_paid_at
+                                                                                        }
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        </td>
+                                                                        {!isFixed && (
+                                                                            <>
+                                                                                <td className="p-3 text-center">
+                                                                                    <Badge variant="outline">
+                                                                                        {
+                                                                                            event.hours_worked
+                                                                                        }
+
+                                                                                        h
+                                                                                    </Badge>
+                                                                                </td>
+                                                                                <td className="p-3">
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        step="0.01"
+                                                                                        min="0"
+                                                                                        value={
+                                                                                            payment?.hourlyRate ||
+                                                                                            ''
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e,
+                                                                                        ) =>
+                                                                                            handleHourlyRateChange(
+                                                                                                event.id,
+                                                                                                staff.user_id,
+                                                                                                e
+                                                                                                    .target
+                                                                                                    .value,
+                                                                                            )
+                                                                                        }
+                                                                                        className="mx-auto w-24 text-center"
+                                                                                        disabled={
+                                                                                            isPaid ||
+                                                                                            isProcessing
+                                                                                        }
+                                                                                        placeholder="0.00"
+                                                                                    />
+                                                                                </td>
+                                                                            </>
+                                                                        )}
+                                                                        <td className="p-3 text-right">
+                                                                            {isFixed ? (
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    step="0.01"
+                                                                                    min="0"
+                                                                                    value={
+                                                                                        payment?.amount ||
+                                                                                        ''
+                                                                                    }
+                                                                                    onChange={(
+                                                                                        e,
+                                                                                    ) =>
+                                                                                        handleFixedAmountChange(
+                                                                                            event.id,
+                                                                                            staff.user_id,
+                                                                                            e
+                                                                                                .target
+                                                                                                .value,
+                                                                                        )
+                                                                                    }
+                                                                                    className="ml-auto w-28 text-right"
+                                                                                    disabled={
+                                                                                        isPaid ||
+                                                                                        isProcessing
+                                                                                    }
+                                                                                    placeholder="0.00"
+                                                                                />
+                                                                            ) : (
+                                                                                <span className="font-semibold text-green-600">
+                                                                                    €
+                                                                                    {(
+                                                                                        payment?.amount ||
+                                                                                        0
+                                                                                    ).toFixed(
+                                                                                        2,
+                                                                                    )}
                                                                                 </span>
                                                                             )}
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
+                                                                        </td>
+                                                                        <td className="p-3 text-right">
+                                                                            <span className="text-muted-foreground">
+                                                                                €
+                                                                                {staff.total_paid.toFixed(
+                                                                                    2,
+                                                                                )}
+                                                                                {staff.payment_count >
+                                                                                    0 && (
+                                                                                    <span className="ml-1 text-xs">
+                                                                                        (
+                                                                                        {
+                                                                                            staff.payment_count
+                                                                                        }
+                                                                                        ×)
+                                                                                    </span>
+                                                                                )}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            },
+                                                        )}
                                                     </tbody>
                                                     <tfoot>
                                                         <tr className="bg-muted/50 font-semibold">
-                                                            <td colSpan={3} className="p-3 text-right">Event Total:</td>
-                                                            <td className="p-3 text-right text-green-600 text-lg">
-                                                                €{eventTotal.toFixed(2)}
+                                                            <td
+                                                                colSpan={
+                                                                    event.compensation_type ===
+                                                                    'hourly'
+                                                                        ? 3
+                                                                        : 1
+                                                                }
+                                                                className="p-3 text-right"
+                                                            >
+                                                                Event Total:
+                                                            </td>
+                                                            <td className="p-3 text-right text-lg text-green-600">
+                                                                €
+                                                                {eventTotal.toFixed(
+                                                                    2,
+                                                                )}
                                                             </td>
                                                             <td className="p-3 text-right text-muted-foreground">
-                                                                €{alreadyPaid.toFixed(2)}
+                                                                €
+                                                                {alreadyPaid.toFixed(
+                                                                    2,
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     </tfoot>
@@ -307,25 +507,37 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                                             {/* Pay Button */}
                                             <div className="flex justify-end">
                                                 <Button
-                                                    onClick={() => handleProcessPayment(event.id)}
-                                                    disabled={isPaid || isProcessing || eventTotal === 0}
+                                                    onClick={() =>
+                                                        handleProcessPayment(
+                                                            event.id,
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        isPaid ||
+                                                        isProcessing ||
+                                                        eventTotal === 0
+                                                    }
                                                     size="lg"
                                                     className="min-w-[200px]"
                                                 >
                                                     {isProcessing ? (
                                                         <>
-                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                             Processing...
                                                         </>
                                                     ) : isPaid ? (
                                                         <>
-                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                            <CheckCircle className="mr-2 h-4 w-4" />
                                                             Payment Processed
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <DollarSign className="h-4 w-4 mr-2" />
-                                                            Process Payment (€{eventTotal.toFixed(2)})
+                                                            <DollarSign className="mr-2 h-4 w-4" />
+                                                            Process Payment (€
+                                                            {eventTotal.toFixed(
+                                                                2,
+                                                            )}
+                                                            )
                                                         </>
                                                     )}
                                                 </Button>
@@ -347,7 +559,8 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                                 Staff Earnings Summary
                             </CardTitle>
                             <CardDescription>
-                                Total earnings per staff member across all events
+                                Total earnings per staff member across all
+                                events
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -355,26 +568,44 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b bg-muted/50">
-                                            <th className="text-left p-3 font-medium">Staff Member</th>
-                                            <th className="text-center p-3 font-medium">Payments</th>
-                                            <th className="text-right p-3 font-medium">Total Earned</th>
+                                            <th className="p-3 text-left font-medium">
+                                                Staff Member
+                                            </th>
+                                            <th className="p-3 text-center font-medium">
+                                                Payments
+                                            </th>
+                                            <th className="p-3 text-right font-medium">
+                                                Total Earned
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {staffSummary.map(staff => (
-                                            <tr key={staff.user_id} className="border-b last:border-0">
+                                        {staffSummary.map((staff) => (
+                                            <tr
+                                                key={staff.user_id}
+                                                className="border-b last:border-0"
+                                            >
                                                 <td className="p-3">
                                                     <div>
-                                                        <p className="font-medium">{staff.user_name}</p>
-                                                        <p className="text-sm text-muted-foreground">{staff.user_email}</p>
+                                                        <p className="font-medium">
+                                                            {staff.user_name}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {staff.user_email}
+                                                        </p>
                                                     </div>
                                                 </td>
                                                 <td className="p-3 text-center">
-                                                    <Badge variant="outline">{staff.payment_count}</Badge>
+                                                    <Badge variant="outline">
+                                                        {staff.payment_count}
+                                                    </Badge>
                                                 </td>
                                                 <td className="p-3 text-right">
-                                                    <span className="font-semibold text-green-600 text-lg">
-                                                        €{staff.total_earned.toFixed(2)}
+                                                    <span className="text-lg font-semibold text-green-600">
+                                                        €
+                                                        {staff.total_earned.toFixed(
+                                                            2,
+                                                        )}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -382,9 +613,22 @@ export default function PayrollIndex({ events, staffSummary }: PayrollProps) {
                                     </tbody>
                                     <tfoot>
                                         <tr className="bg-muted/50 font-bold">
-                                            <td colSpan={2} className="p-3 text-right">Grand Total:</td>
-                                            <td className="p-3 text-right text-green-600 text-xl">
-                                                €{staffSummary.reduce((sum, s) => sum + s.total_earned, 0).toFixed(2)}
+                                            <td
+                                                colSpan={2}
+                                                className="p-3 text-right"
+                                            >
+                                                Grand Total:
+                                            </td>
+                                            <td className="p-3 text-right text-xl text-green-600">
+                                                €
+                                                {staffSummary
+                                                    .reduce(
+                                                        (sum, s) =>
+                                                            sum +
+                                                            s.total_earned,
+                                                        0,
+                                                    )
+                                                    .toFixed(2)}
                                             </td>
                                         </tr>
                                     </tfoot>
