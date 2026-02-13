@@ -27,7 +27,6 @@ class EventController extends Controller
         // Load relationships
         $event->load([
             'compensation',
-            'requirements',
             'agency',
             'messages.user',
             'assignments' => function ($query) {
@@ -64,13 +63,6 @@ class EventController extends Controller
                     'hourly_rate' => $event->compensation->hourly_rate,
                     'total_amount' => $event->compensation->total_amount,
                     'type' => $event->compensation->type->value,
-                ] : null,
-                'requirements' => $event->requirements ? [
-                    'age_minimum' => $event->requirements->age_minimum,
-                    'experience_years' => $event->requirements->experience_years,
-                    'skills_required' => $event->requirements->skills_required,
-                    'certifications_required' => $event->requirements->certifications_required,
-                    'physical_requirements' => $event->requirements->physical_requirements,
                 ] : null,
                 'agency' => [
                     'id' => $event->agency->id,

@@ -1,8 +1,6 @@
 import { type NavItem } from '@/types';
 import {
-    Building2,
     Calendar,
-    Clock,
     DollarSign,
     FileText,
     LayoutGrid,
@@ -54,16 +52,6 @@ export const staffMemberNavItems: NavItem[] = [
         title: 'My Schedule',
         href: '/staff/schedule',
         icon: Calendar,
-    },
-    {
-        title: 'Time Tracking',
-        href: '/staff/timesheet',
-        icon: Clock,
-    },
-    {
-        title: 'My Agency',
-        href: '/staff/agency',
-        icon: Building2,
     },
     {
         title: 'Profile',

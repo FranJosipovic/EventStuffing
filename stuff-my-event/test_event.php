@@ -5,7 +5,7 @@ require __DIR__ . '/vendor/autoload.php';
 $app = require_once __DIR__ . '/bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-$event = App\Models\Event::with(['agency', 'requirements', 'compensation', 'messages', 'assignments'])->find(1);
+$event = App\Models\Event::with(['agency', 'compensation', 'messages', 'assignments'])->find(1);
 
 if (!$event) {
     echo "Event with ID 1 not found!\n";
@@ -20,7 +20,6 @@ if (!$event) {
 echo "Event found: {$event->name}\n";
 echo "Status: {$event->status->value}\n";
 echo "Agency: " . ($event->agency ? $event->agency->name : 'N/A') . "\n";
-echo "Requirements: " . ($event->requirements ? 'Yes' : 'No') . "\n";
 echo "Compensation: " . ($event->compensation ? 'Yes' : 'No') . "\n";
 echo "Messages count: " . $event->messages->count() . "\n";
 echo "Assignments count: " . $event->assignments->count() . "\n";

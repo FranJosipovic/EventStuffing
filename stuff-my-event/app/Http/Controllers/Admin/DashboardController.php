@@ -17,7 +17,7 @@ class DashboardController extends Controller
     {
         $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
-        
+
         if (!$agency) {
             return Inertia::render('admin/dashboard', [
                 'agency' => null,
@@ -29,7 +29,7 @@ class DashboardController extends Controller
 
         // Get recent activities (messages and assignments)
         $recentActivities = $this->getRecentActivities($agency->id);
-        
+
         // Get active projects (events in the next 7 days)
         $activeProjects = Event::where('agency_id', $agency->id)
             ->where('date', '>=', now())
@@ -37,8 +37,7 @@ class DashboardController extends Controller
             ->where('status', '!=', EventStatus::COMPLETED)
             ->with([
                 'assignments.user',
-                'compensation',
-                'requirements'
+                'compensation'
             ])
             ->withCount([
                 'assignments',
@@ -78,7 +77,7 @@ class DashboardController extends Controller
                     'days_until' => now()->diffInDays($event->date, false),
                 ];
             });
-        
+
         // Get upcoming projects (events after 7 days)
         $upcomingProjects = Event::where('agency_id', $agency->id)
             ->where('date', '>', now()->addDays(7))
@@ -118,11 +117,11 @@ class DashboardController extends Controller
                     'days_until' => now()->diffInDays($event->date, false),
                 ];
             });
-        
+
         // Get pending requests (assignments waiting for approval/response)
         $pendingRequests = EventAssignment::whereHas('event', function ($query) use ($agency) {
-                $query->where('agency_id', $agency->id);
-            })
+            $query->where('agency_id', $agency->id);
+        })
             ->where('status', \App\Models\Enums\AssignmentStatus::PENDING)
             ->with(['event', 'user'])
             ->orderBy('created_at', 'desc')
@@ -147,7 +146,7 @@ class DashboardController extends Controller
                     'time_ago' => $assignment->created_at->diffForHumans(),
                 ];
             });
-        
+
         return Inertia::render('admin/dashboard', [
             'agency' => $agency->load('members'),
             'recentActivities' => $recentActivities,
@@ -174,8 +173,8 @@ class DashboardController extends Controller
     {
         // Get recent messages
         $messages = EventMessage::whereHas('event', function ($query) use ($agencyId) {
-                $query->where('agency_id', $agencyId);
-            })
+            $query->where('agency_id', $agencyId);
+        })
             ->with(['event', 'user'])
             ->select('id', 'event_id', 'user_id', 'message', 'created_at')
             ->get()
@@ -195,8 +194,8 @@ class DashboardController extends Controller
 
         // Get recent assignment changes
         $assignments = EventAssignment::whereHas('event', function ($query) use ($agencyId) {
-                $query->where('agency_id', $agencyId);
-            })
+            $query->where('agency_id', $agencyId);
+        })
             ->with(['event', 'user'])
             ->select('id', 'event_id', 'user_id', 'status', 'notes', 'updated_at', 'responded_at')
             ->get()

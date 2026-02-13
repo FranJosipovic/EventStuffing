@@ -15,7 +15,7 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->guard()->user();
-        
+
         // Get activity history - all assignments (accepted, pending, rejected)
         $activityHistory = EventAssignment::where('user_id', $user->id)
             ->with([
@@ -60,17 +60,16 @@ class DashboardController extends Controller
                     'is_upcoming' => $event->date >= now(),
                 ];
             });
-        
+
         // Get available events that staff can apply for
-        // (events in STAFFING/READY status that the user is not assigned to or has pending/rejected assignments)
-        $availableEvents = Event::where('agency_id', $user->agency_id)
-            ->whereIn('status', [EventStatus::STAFFING, EventStatus::READY])
+        // (events in NEW/STAFFING/READY status that the user is not assigned to or has pending/rejected assignments)
+        $availableEvents = Event::whereIn('status', [EventStatus::NEW, EventStatus::STAFFING, EventStatus::READY])
             ->where('date', '>=', now())
             ->whereDoesntHave('assignments', function ($query) use ($user) {
                 $query->where('user_id', $user->id)
                     ->where('status', AssignmentStatus::ACCEPTED);
             })
-            ->with(['compensation', 'requirements'])
+            ->with(['compensation', 'agency'])
             ->withCount([
                 'assignments as accepted_count' => function ($query) {
                     $query->where('status', AssignmentStatus::ACCEPTED);
@@ -82,7 +81,7 @@ class DashboardController extends Controller
             ->map(function ($event) use ($user) {
                 // Check if user has any assignment (pending/rejected)
                 $userAssignment = $event->assignments()->where('user_id', $user->id)->first();
-                
+
                 return [
                     'id' => $event->id,
                     'name' => $event->name,
@@ -103,17 +102,13 @@ class DashboardController extends Controller
                         'hourly_rate' => $event->compensation->hourly_rate,
                         'total_amount' => $event->compensation->total_amount,
                     ] : null,
-                    'requirements' => $event->requirements ? [
-                        'age_minimum' => $event->requirements->age_minimum,
-                        'experience_years' => $event->requirements->experience_years,
-                        'skills_required' => $event->requirements->skills_required,
-                    ] : null,
+                    'agency_name' => $event->agency?->name,
                     'days_until' => now()->diffInDays($event->date, false),
                     'user_assignment_status' => $userAssignment ? $userAssignment->status->value : null,
                     'can_apply' => !$userAssignment || $userAssignment->status === AssignmentStatus::REJECTED,
                 ];
             });
-        
+
         return Inertia::render('staff/dashboard', [
             'agency' => $user->agency ? $user->agency->load('owner') : null,
             'activityHistory' => $activityHistory,
