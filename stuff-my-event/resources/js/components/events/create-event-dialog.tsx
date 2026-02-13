@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import { Autocomplete, useLoadScript } from '@react-google-maps/api';
 import { Plus } from 'lucide-react';
-import { FormEventHandler, useRef, useState } from 'react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
 
 const libraries: 'places'[] = ['places'];
 
@@ -26,6 +26,15 @@ export function CreateEventDialog() {
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(
         null,
     );
+    const locationInputRef = useRef<HTMLInputElement | null>(null);
+
+    // Check if Google's autocomplete dropdown is currently visible
+    const isPacContainerVisible = () => {
+        const pacContainer = document.querySelector('.pac-container');
+        if (!pacContainer) return false;
+        const style = window.getComputedStyle(pacContainer);
+        return style.display !== 'none' && pacContainer.children.length > 0;
+    };
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
@@ -62,6 +71,25 @@ export function CreateEventDialog() {
         }
     };
 
+    // Set high z-index on Google's pac-container so it appears above the dialog
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.textContent = `
+            .pac-container {
+                z-index: 10000 !important;
+                pointer-events: auto !important;
+            }
+            .pac-item {
+                cursor: pointer !important;
+                pointer-events: auto !important;
+            }
+        `;
+        document.head.appendChild(style);
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
 
@@ -81,7 +109,16 @@ export function CreateEventDialog() {
                     Create Event
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+            <DialogContent
+                className="max-h-[90vh] max-w-2xl overflow-y-auto"
+                onInteractOutside={(e) => {
+                    // Prevent dialog from closing when clicking on Google Places autocomplete
+                    const target = e.target as HTMLElement;
+                    if (target.closest('.pac-container')) {
+                        e.preventDefault();
+                    }
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>Create New Event</DialogTitle>
                     <DialogDescription>
@@ -204,10 +241,21 @@ export function CreateEventDialog() {
                                 >
                                     <Input
                                         id="location"
+                                        ref={locationInputRef}
                                         value={data.location}
-                                        onChange={(e) =>
-                                            setData('location', e.target.value)
-                                        }
+                                        onChange={(e) => {
+                                            setData('location', e.target.value);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            // Prevent form submission when autocomplete dropdown is visible
+                                            if (
+                                                e.key === 'Enter' &&
+                                                isPacContainerVisible()
+                                            ) {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                            }
+                                        }}
                                         placeholder="Search for a location..."
                                         required
                                     />

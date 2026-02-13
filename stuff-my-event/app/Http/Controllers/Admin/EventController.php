@@ -196,4 +196,30 @@ class EventController extends Controller
             ])
         ]);
     }
+
+    /**
+     * Delete an event (only by the agency owner)
+     */
+    public function destroy(Event $event): RedirectResponse
+    {
+        $user = auth()->guard()->user();
+
+        // Check if the event belongs to the user's agency
+        if ($event->agency_id !== $user->agency_id) {
+            abort(403, 'Unauthorized to delete this event.');
+        }
+
+        // Delete related records first
+        $event->messages()->delete();
+        $event->assignments()->delete();
+        $event->requirements()->delete();
+        $event->compensation()->delete();
+        $event->payments()->delete();
+
+        // Delete the event
+        $event->delete();
+
+        return redirect()->route('admin.events.index')
+            ->with('success', 'Event deleted successfully.');
+    }
 }

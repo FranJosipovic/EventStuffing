@@ -19,7 +19,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
 import axios from 'axios';
 import {
@@ -30,6 +30,7 @@ import {
     FileText,
     MapPin,
     Shirt,
+    Trash2,
     Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -117,6 +118,20 @@ export default function EventDetails({
 
     const [messages, setMessages] = useState<Message[]>(initial_messages);
     const [sendMessageLoading, setSendMessageLoading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDeleteEvent = () => {
+        if (
+            confirm(
+                `Are you sure you want to delete "${event.name}"? This action cannot be undone and will remove all associated data including assignments, messages, and payments.`,
+            )
+        ) {
+            setIsDeleting(true);
+            router.delete(`/admin/events/${event.id}`, {
+                onFinish: () => setIsDeleting(false),
+            });
+        }
+    };
 
     useEcho(`event.${event.id}`, '.message.received', (message) => {
         console.log('New message received:', message);
@@ -230,12 +245,23 @@ export default function EventDetails({
                                 multiline
                             />
                         </div>
-                        <Badge
-                            variant="outline"
-                            className={`${getStatusColor(event.status)} px-3 py-1 text-sm`}
-                        >
-                            {event.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                            <Badge
+                                variant="outline"
+                                className={`${getStatusColor(event.status)} px-3 py-1 text-sm`}
+                            >
+                                {event.status}
+                            </Badge>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleDeleteEvent}
+                                disabled={isDeleting}
+                            >
+                                <Trash2 className="mr-1 h-4 w-4" />
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
