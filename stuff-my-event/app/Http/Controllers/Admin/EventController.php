@@ -129,7 +129,6 @@ class EventController extends Controller
         // Load all relationships
         $event->load([
             'agency',
-            'requirements',
             'compensation',
             'messages.user.userRole',
             'assignments.user.userRole'
@@ -162,14 +161,6 @@ class EventController extends Controller
                 'id' => $event->agency->id,
                 'name' => $event->agency->name,
             ],
-            'requirements' => $event->requirements ? [
-                'clothing_requirements' => $event->requirements->clothing_requirements,
-                'special_instructions' => $event->requirements->special_instructions,
-                'arrival_time' => $event->requirements->arrival_time?->format('H:i'),
-                'meeting_point' => $event->requirements->meeting_point,
-                'equipment_needed' => $event->requirements->equipment_needed,
-                'other_notes' => $event->requirements->other_notes,
-            ] : null,
             'compensation' => $event->compensation ? [
                 'type' => $event->compensation->type,
                 'amount' => $event->compensation->amount,
@@ -198,6 +189,67 @@ class EventController extends Controller
     }
 
     /**
+     * Update an event
+     */
+    public function update(Request $request, Event $event): RedirectResponse
+    {
+        $user = auth()->guard()->user();
+
+        // Check if the event belongs to the user's agency
+        if ($event->agency_id !== $user->agency_id) {
+            abort(403, 'Unauthorized to update this event.');
+        }
+
+        // Validate the request
+        $validated = $request->validate([
+            'date' => ['sometimes', 'date'],
+            'time_from' => ['sometimes', 'date_format:H:i'],
+            'time_to' => ['sometimes', 'date_format:H:i'],
+            'wage_amount' => ['sometimes', 'numeric', 'min:0'],
+            'wage_type' => ['sometimes', 'in:fixed,hourly'],
+        ]);
+
+        // Update event fields
+        $eventData = [];
+        if (isset($validated['date'])) {
+            $eventData['date'] = $validated['date'];
+        }
+        if (isset($validated['time_from'])) {
+            $eventData['time_from'] = $validated['time_from'];
+        }
+        if (isset($validated['time_to'])) {
+            $eventData['time_to'] = $validated['time_to'];
+        }
+
+        if (!empty($eventData)) {
+            $event->update($eventData);
+        }
+
+        // Update compensation if wage data is provided
+        if (isset($validated['wage_amount']) || isset($validated['wage_type'])) {
+            $compensationData = [];
+            if (isset($validated['wage_amount'])) {
+                $compensationData['amount'] = $validated['wage_amount'];
+            }
+            if (isset($validated['wage_type'])) {
+                $compensationData['type'] = $validated['wage_type'];
+            }
+
+            if ($event->compensation) {
+                $event->compensation->update($compensationData);
+            } else {
+                $event->compensation()->create(array_merge([
+                    'event_id' => $event->id,
+                    'type' => $validated['wage_type'] ?? 'hourly',
+                    'amount' => $validated['wage_amount'] ?? 0,
+                ], $compensationData));
+            }
+        }
+
+        return back()->with('success', 'Event updated successfully.');
+    }
+
+    /**
      * Delete an event (only by the agency owner)
      */
     public function destroy(Event $event): RedirectResponse
@@ -212,7 +264,6 @@ class EventController extends Controller
         // Delete related records first
         $event->messages()->delete();
         $event->assignments()->delete();
-        $event->requirements()->delete();
         $event->compensation()->delete();
         $event->payments()->delete();
 

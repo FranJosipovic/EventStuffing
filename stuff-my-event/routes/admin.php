@@ -19,6 +19,7 @@ Route::middleware(['auth', 'role:agency_owner'])->prefix('admin')->group(functio
     Route::get('/events/create', [AdminEventController::class, 'create'])->name('admin.events.create');
     Route::post('/events', [AdminEventController::class, 'store'])->name('admin.events.store');
     Route::get('/events/{event}', [AdminEventController::class, 'show'])->name('admin.events.show');
+    Route::put('/events/{event}', [AdminEventController::class, 'update'])->name('admin.events.update');
     Route::delete('/events/{event}', [AdminEventController::class, 'destroy'])->name('admin.events.destroy');
     Route::post('/events/{event}/messages', [EventMessageController::class, 'store'])->name('admin.events.messages.store');
 

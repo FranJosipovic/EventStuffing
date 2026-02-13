@@ -44,11 +44,6 @@ class Event extends Model
         return $this->belongsTo(Agency::class);
     }
 
-    public function requirements(): HasOne
-    {
-        return $this->hasOne(EventRequirement::class);
-    }
-
     public function compensation(): HasOne
     {
         return $this->hasOne(EventCompensation::class);

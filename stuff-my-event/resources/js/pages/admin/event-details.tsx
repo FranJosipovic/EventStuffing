@@ -8,6 +8,7 @@ import { EditableField } from '@/components/editable-field';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
     Card,
     CardContent,
@@ -15,8 +16,21 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Input } from '@/components/ui/input';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -27,9 +41,7 @@ import {
     ChevronLeft,
     Clock,
     DollarSign,
-    FileText,
     MapPin,
-    Shirt,
     Trash2,
     Users,
 } from 'lucide-react';
@@ -59,15 +71,6 @@ interface EventDetails {
 interface Agency {
     id: string;
     name: string;
-}
-
-interface EventRequirements {
-    clothing_requirements: string;
-    special_instructions: string;
-    arrival_time: string;
-    meeting_point: string;
-    equipment_needed: string;
-    other_notes: string;
 }
 
 interface Compensation {
@@ -100,7 +103,6 @@ interface Assignment {
 interface Props {
     event: EventDetails;
     agency: Agency;
-    requirements: EventRequirements | null;
     compensation: Compensation | null;
     initial_messages: Message[];
     assignments: Assignment[];
@@ -109,7 +111,6 @@ interface Props {
 export default function EventDetails({
     event,
     agency,
-    requirements,
     compensation,
     initial_messages,
     assignments,
@@ -119,18 +120,25 @@ export default function EventDetails({
     const [messages, setMessages] = useState<Message[]>(initial_messages);
     const [sendMessageLoading, setSendMessageLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isWageEditing, setIsWageEditing] = useState(false);
+    const [wageAmount, setWageAmount] = useState(compensation?.amount ?? 0);
+    const [wageType, setWageType] = useState<'hourly' | 'fixed'>(
+        compensation?.type ?? 'hourly',
+    );
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+        event.date ? new Date(event.date) : undefined,
+    );
+    const [isDateOpen, setIsDateOpen] = useState(false);
 
     const handleDeleteEvent = () => {
-        if (
-            confirm(
-                `Are you sure you want to delete "${event.name}"? This action cannot be undone and will remove all associated data including assignments, messages, and payments.`,
-            )
-        ) {
-            setIsDeleting(true);
-            router.delete(`/admin/events/${event.id}`, {
-                onFinish: () => setIsDeleting(false),
-            });
-        }
+        setIsDeleting(true);
+        router.delete(`/admin/events/${event.id}`, {
+            onFinish: () => {
+                setIsDeleting(false);
+                setIsDeleteDialogOpen(false);
+            },
+        });
     };
 
     useEcho(`event.${event.id}`, '.message.received', (message) => {
@@ -195,20 +203,53 @@ export default function EventDetails({
     };
 
     //event updates
-    const handleUpdateField = (field: string, value: string) => {
-        if (!event) return;
-
-        //TODO: handle updates
-
-        console.log('[v0] Updated field:', field, 'to:', value);
+    const handleUpdateDate = (date: Date | undefined) => {
+        if (!date) return;
+        setSelectedDate(date);
+        setIsDateOpen(false);
+        router.put(
+            `/admin/events/${event.id}`,
+            {
+                date: date.toISOString().split('T')[0],
+            },
+            {
+                preserveScroll: true,
+            },
+        );
     };
 
-    const handleUpdateRequirement = (field: string, value: string) => {
-        if (!event || !requirements) return;
+    const handleUpdateField = async (field: string, value: string) => {
+        if (!event) return;
 
-        //TOOD: handle updates
+        try {
+            const data: Record<string, any> = {};
 
-        console.log('[v0] Updated requirement:', field, 'to:', value);
+            if (field === 'time') {
+                const [start, end] = value.split(' - ');
+                data.time_from = start.trim();
+                data.time_to = end.trim();
+            }
+
+            router.put(`/admin/events/${event.id}`, data, {
+                preserveScroll: true,
+            });
+        } catch (error) {
+            console.error('Error updating field:', error);
+        }
+    };
+
+    const handleSaveWage = () => {
+        router.put(
+            `/admin/events/${event.id}`,
+            {
+                wage_amount: wageAmount,
+                wage_type: wageType,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setIsWageEditing(false),
+            },
+        );
     };
 
     const staffingPercentage =
@@ -230,20 +271,12 @@ export default function EventDetails({
                     </Link>
                     <div className="flex items-start justify-between">
                         <div className="mr-4 flex-1">
-                            <EditableField
-                                value={event.name}
-                                onSave={(value) =>
-                                    handleUpdateField('name', value)
-                                }
-                                className="mb-2"
-                            />
-                            <EditableField
-                                value={event.description}
-                                onSave={(value) =>
-                                    handleUpdateField('description', value)
-                                }
-                                multiline
-                            />
+                            <h1 className="mb-2 text-2xl font-bold">
+                                {event.name}
+                            </h1>
+                            <p className="text-muted-foreground">
+                                {event.description}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Badge
@@ -255,11 +288,10 @@ export default function EventDetails({
                             <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={handleDeleteEvent}
-                                disabled={isDeleting}
+                                onClick={() => setIsDeleteDialogOpen(true)}
                             >
                                 <Trash2 className="mr-1 h-4 w-4" />
-                                {isDeleting ? 'Deleting...' : 'Delete'}
+                                Delete
                             </Button>
                         </div>
                     </div>
@@ -277,65 +309,148 @@ export default function EventDetails({
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="flex items-start gap-3">
                                         <CalendarIcon className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                                        <EditableField
-                                            value={formatDate(event.date)}
-                                            onSave={(value) =>
-                                                handleUpdateField('date', value)
-                                            }
-                                            label="Date"
-                                        />
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Date
+                                            </p>
+                                            <Popover
+                                                open={isDateOpen}
+                                                onOpenChange={setIsDateOpen}
+                                            >
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="h-auto p-0 font-medium text-foreground hover:underline"
+                                                    >
+                                                        {formatDate(event.date)}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent
+                                                    className="w-auto p-0"
+                                                    align="start"
+                                                >
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={selectedDate}
+                                                        onSelect={
+                                                            handleUpdateDate
+                                                        }
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Clock className="mt-0.5 h-5 w-5 text-muted-foreground" />
                                         <EditableField
                                             value={`${event.time_from} - ${event.time_to}`}
-                                            onSave={(value) => {
-                                                const [start, end] =
-                                                    value.split(' - ');
-                                                handleUpdateField(
-                                                    'startTime',
-                                                    start.trim(),
-                                                );
-                                                handleUpdateField(
-                                                    'endTime',
-                                                    end.trim(),
-                                                );
-                                            }}
+                                            onSave={(value) =>
+                                                handleUpdateField('time', value)
+                                            }
                                             label="Time"
                                         />
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <MapPin className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                                        <EditableField
-                                            value={event.location}
-                                            onSave={(value) =>
-                                                handleUpdateField(
-                                                    'location',
-                                                    value,
-                                                )
-                                            }
-                                            label="Location"
-                                        />
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Location
+                                            </p>
+                                            <p className="font-medium text-foreground">
+                                                {event.location}
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <DollarSign className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                                        <EditableField
-                                            value={
-                                                compensation?.type === 'hourly'
-                                                    ? `$${compensation?.amount}/hour`
-                                                    : `$${compensation?.amount} fixed`
-                                            }
-                                            onSave={(value) => {
-                                                const amount =
-                                                    value.match(/\d+/);
-                                                if (amount)
-                                                    handleUpdateField(
-                                                        'wageAmount',
-                                                        amount[0],
-                                                    );
-                                            }}
-                                            label="Wage"
-                                        />
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Wage
+                                            </p>
+                                            {isWageEditing ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            type="number"
+                                                            value={wageAmount}
+                                                            onChange={(e) =>
+                                                                setWageAmount(
+                                                                    parseFloat(
+                                                                        e.target
+                                                                            .value,
+                                                                    ) || 0,
+                                                                )
+                                                            }
+                                                            className="h-8 w-24"
+                                                            min="0"
+                                                            step="0.01"
+                                                        />
+                                                        <Select
+                                                            value={wageType}
+                                                            onValueChange={(
+                                                                v:
+                                                                    | 'hourly'
+                                                                    | 'fixed',
+                                                            ) => setWageType(v)}
+                                                        >
+                                                            <SelectTrigger className="h-8 w-28">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="hourly">
+                                                                    Per Hour
+                                                                </SelectItem>
+                                                                <SelectItem value="fixed">
+                                                                    Fixed
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={
+                                                                handleSaveWage
+                                                            }
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setIsWageEditing(
+                                                                    false,
+                                                                );
+                                                                setWageAmount(
+                                                                    compensation?.amount ??
+                                                                        0,
+                                                                );
+                                                                setWageType(
+                                                                    compensation?.type ??
+                                                                        'hourly',
+                                                                );
+                                                            }}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p
+                                                    className="cursor-pointer font-medium text-foreground hover:underline"
+                                                    onClick={() =>
+                                                        setIsWageEditing(true)
+                                                    }
+                                                >
+                                                    {compensation?.type ===
+                                                    'hourly'
+                                                        ? `$${compensation?.amount}/hour`
+                                                        : `$${compensation?.amount ?? 0} fixed`}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Users className="mt-0.5 h-5 w-5 text-muted-foreground" />
@@ -357,136 +472,6 @@ export default function EventDetails({
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* Requirements */}
-                        {requirements && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <FileText className="h-5 w-5" />
-                                        Requirements & Instructions
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {requirements.clothing_requirements && (
-                                        <div>
-                                            <div className="mb-2 flex items-center gap-2">
-                                                <Shirt className="h-4 w-4 text-muted-foreground" />
-                                                <h4 className="font-semibold text-foreground">
-                                                    Dress Code
-                                                </h4>
-                                            </div>
-                                            <div className="pl-6">
-                                                <EditableField
-                                                    value={
-                                                        requirements.clothing_requirements
-                                                    }
-                                                    onSave={(value) =>
-                                                        handleUpdateRequirement(
-                                                            'clothing_requirements',
-                                                            value,
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {requirements.special_instructions && (
-                                        <div>
-                                            <h4 className="mb-2 font-semibold text-foreground">
-                                                Instructions
-                                            </h4>
-                                            <EditableField
-                                                value={
-                                                    requirements.special_instructions
-                                                }
-                                                onSave={(value) =>
-                                                    handleUpdateRequirement(
-                                                        'special_instructions',
-                                                        value,
-                                                    )
-                                                }
-                                                multiline
-                                            />
-                                        </div>
-                                    )}
-                                    <Separator />
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {requirements.arrival_time && (
-                                            <div className="flex items-start gap-3">
-                                                <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                                                <EditableField
-                                                    value={
-                                                        requirements.arrival_time
-                                                    }
-                                                    onSave={(value) =>
-                                                        handleUpdateRequirement(
-                                                            'arrival_time',
-                                                            value,
-                                                        )
-                                                    }
-                                                    label="Check-in Time"
-                                                />
-                                            </div>
-                                        )}
-                                        {/* {requirements.parking_info && (
-                                            <div className="flex items-start gap-3">
-                                                <ParkingCircle className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                                                <EditableField
-                                                    value={
-                                                        event.requirements
-                                                            .parkingInfo
-                                                    }
-                                                    onSave={(value) =>
-                                                        handleUpdateRequirement(
-                                                            'parkingInfo',
-                                                            value,
-                                                        )
-                                                    }
-                                                    label="Parking"
-                                                />
-                                            </div>
-                                        )} */}
-                                        {/* {requirements.contact_person && (
-                                            <div className="flex items-start gap-3">
-                                                <User className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                                                <EditableField
-                                                    value={
-                                                        event.requirements
-                                                            .contactPerson
-                                                    }
-                                                    onSave={(value) =>
-                                                        handleUpdateRequirement(
-                                                            'contactPerson',
-                                                            value,
-                                                        )
-                                                    }
-                                                    label="Contact Person"
-                                                />
-                                            </div>
-                                        )} */}
-                                        {/* {event.requirements.contactPhone && (
-                                            <div className="flex items-start gap-3">
-                                                <Phone className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                                                <EditableField
-                                                    value={
-                                                        event.requirements
-                                                            .contactPhone
-                                                    }
-                                                    onSave={(value) =>
-                                                        handleUpdateRequirement(
-                                                            'contactPhone',
-                                                            value,
-                                                        )
-                                                    }
-                                                    label="Phone"
-                                                />
-                                            </div>
-                                        )} */}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
 
                         {/* Location Map */}
                         {event.has_coordinates && (
@@ -616,6 +601,17 @@ export default function EventDetails({
                 onAcceptRequest={() => {}}
                 onRejectRequest={() => {}}
                 onRemoveStaff={() => {}}
+            />
+
+            <ConfirmDialog
+                open={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                title="Delete Event"
+                description={`Are you sure you want to delete "${event.name}"? This action cannot be undone and will remove all associated data including assignments, messages, and payments.`}
+                confirmLabel="Delete Event"
+                variant="destructive"
+                loading={isDeleting}
+                onConfirm={handleDeleteEvent}
             />
         </AppLayout>
     );
