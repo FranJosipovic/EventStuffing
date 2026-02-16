@@ -15,7 +15,7 @@ class AssignmentController extends Controller
     public function approve(EventAssignment $assignment)
     {
         // Verify ownership (assignment belongs to agency's event)
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
 
         if (!$agency || $assignment->event->agency_id !== $agency->id) {
@@ -39,7 +39,7 @@ class AssignmentController extends Controller
     public function reject(Request $request, EventAssignment $assignment)
     {
         // Verify ownership (assignment belongs to agency's event)
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
 
         if (!$agency || $assignment->event->agency_id !== $agency->id) {
@@ -55,5 +55,24 @@ class AssignmentController extends Controller
         $assignment->reject($request->notes);
 
         return back()->with('success', "Assignment rejected for {$assignment->user->name}.");
+    }
+
+    /**
+     * Remove a staff member from an event
+     */
+    public function destroy(EventAssignment $assignment)
+    {
+        // Verify ownership (assignment belongs to agency's event)
+        $user = auth()->guard()->user();
+        $agency = $user->ownedAgency;
+
+        if (!$agency || $assignment->event->agency_id !== $agency->id) {
+            return back()->with('error', 'Unauthorized action.');
+        }
+
+        $staffName = $assignment->user->name;
+        $assignment->delete();
+
+        return back()->with('success', "$staffName has been removed from the event.");
     }
 }

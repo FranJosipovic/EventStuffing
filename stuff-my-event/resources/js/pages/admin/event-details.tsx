@@ -598,9 +598,29 @@ export default function EventDetails({
                 staffRequests={assignments
                     .filter((a) => a.status === 'pending')
                     .map((a) => a as StaffRequest)}
-                onAcceptRequest={() => {}}
-                onRejectRequest={() => {}}
-                onRemoveStaff={() => {}}
+                onAcceptRequest={(requestId) => {
+                    router.post(
+                        `/admin/assignments/${requestId}/approve`,
+                        {},
+                        {
+                            preserveScroll: true,
+                        },
+                    );
+                }}
+                onRejectRequest={(requestId) => {
+                    router.post(
+                        `/admin/assignments/${requestId}/reject`,
+                        {},
+                        {
+                            preserveScroll: true,
+                        },
+                    );
+                }}
+                onRemoveStaff={(staffId) => {
+                    router.delete(`/admin/assignments/${staffId}`, {
+                        preserveScroll: true,
+                    });
+                }}
             />
 
             <ConfirmDialog

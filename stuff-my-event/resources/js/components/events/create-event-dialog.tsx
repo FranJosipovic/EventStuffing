@@ -12,6 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
 import { Autocomplete, useLoadScript } from '@react-google-maps/api';
@@ -51,6 +58,8 @@ export function CreateEventDialog() {
         location_latitude: 0,
         location_longitude: 0,
         required_staff_count: 1,
+        wage_amount: 0,
+        wage_type: 'hourly' as 'hourly' | 'fixed',
     });
 
     const onPlaceChanged = () => {
@@ -291,6 +300,57 @@ export function CreateEventDialog() {
                                     {errors.required_staff_count}
                                 </p>
                             )}
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="wage_amount">Wage Amount</Label>
+                                <Input
+                                    id="wage_amount"
+                                    type="number"
+                                    value={data.wage_amount}
+                                    onChange={(e) =>
+                                        setData(
+                                            'wage_amount',
+                                            parseFloat(e.target.value) || 0,
+                                        )
+                                    }
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="e.g., 25.00"
+                                />
+                                {errors.wage_amount && (
+                                    <p className="text-sm text-red-600">
+                                        {errors.wage_amount}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="wage_type">Wage Type</Label>
+                                <Select
+                                    value={data.wage_type}
+                                    onValueChange={(v: 'hourly' | 'fixed') =>
+                                        setData('wage_type', v)
+                                    }
+                                >
+                                    <SelectTrigger id="wage_type">
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="hourly">
+                                            Per Hour
+                                        </SelectItem>
+                                        <SelectItem value="fixed">
+                                            Fixed Amount
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.wage_type && (
+                                    <p className="text-sm text-red-600">
+                                        {errors.wage_type}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         {/* Hidden status field */}

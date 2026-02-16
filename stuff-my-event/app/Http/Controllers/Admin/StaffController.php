@@ -18,7 +18,7 @@ class StaffController extends Controller
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
 
         if (!$agency) {
@@ -38,7 +38,7 @@ class StaffController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('email', 'like', '%' . $search . '%');
+                    ->orWhere('email', 'like', '%' . $search . '%');
             });
         }
 
@@ -46,9 +46,9 @@ class StaffController extends Controller
         if ($roleFilter && $roleFilter !== 'all') {
             $query->where(function ($q) use ($roleFilter) {
                 $q->where('role', $roleFilter)
-                  ->orWhereHas('userRole', function ($subQuery) use ($roleFilter) {
-                      $subQuery->where('name', $roleFilter);
-                  });
+                    ->orWhereHas('userRole', function ($subQuery) use ($roleFilter) {
+                        $subQuery->where('name', $roleFilter);
+                    });
             });
         }
 
@@ -63,13 +63,13 @@ class StaffController extends Controller
             ->get()
             ->map(function ($member) {
                 // Support both new role_id and old role enum
-                $roleName = $member->role_id && $member->userRole 
-                    ? $member->userRole->name 
+                $roleName = $member->role_id && $member->userRole
+                    ? $member->userRole->name
                     : $member->role?->value;
-                $roleLabel = $member->role_id && $member->userRole 
-                    ? $member->userRole->label 
+                $roleLabel = $member->role_id && $member->userRole
+                    ? $member->userRole->label
                     : $member->role?->label();
-                
+
                 return [
                     'id' => $member->id,
                     'name' => $member->name,
@@ -106,17 +106,17 @@ class StaffController extends Controller
             'agency_owners' => User::where('agency_id', $agency->id)
                 ->where(function ($q) {
                     $q->where('role', UserRole::AGENCY_OWNER)
-                      ->orWhereHas('userRole', function ($subQuery) {
-                          $subQuery->where('name', 'agency_owner');
-                      });
+                        ->orWhereHas('userRole', function ($subQuery) {
+                            $subQuery->where('name', 'agency_owner');
+                        });
                 })
                 ->count(),
             'staff_members' => User::where('agency_id', $agency->id)
                 ->where(function ($q) {
                     $q->where('role', UserRole::STAFF_MEMBER)
-                      ->orWhereHas('userRole', function ($subQuery) {
-                          $subQuery->where('name', 'staff_member');
-                      });
+                        ->orWhereHas('userRole', function ($subQuery) {
+                            $subQuery->where('name', 'staff_member');
+                        });
                 })
                 ->count(),
             'active_this_month' => User::where('agency_id', $agency->id)
@@ -142,7 +142,7 @@ class StaffController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
 
         if (!$agency) {
@@ -182,7 +182,7 @@ class StaffController extends Controller
      */
     public function update(Request $request, User $staff)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
 
         if (!$agency) {
@@ -237,7 +237,7 @@ class StaffController extends Controller
      */
     public function destroy(User $staff)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->ownedAgency;
 
         if (!$agency) {

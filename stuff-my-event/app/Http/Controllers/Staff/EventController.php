@@ -17,7 +17,7 @@ class EventController extends Controller
      */
     public function show(Event $event)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
 
         // Verify user belongs to the same agency as the event
         if ($user->agency_id !== $event->agency_id) {
@@ -62,7 +62,7 @@ class EventController extends Controller
                 'compensation' => $event->compensation ? [
                     'hourly_rate' => $event->compensation->hourly_rate,
                     'total_amount' => $event->compensation->total_amount,
-                    'type' => $event->compensation->type->value,
+                    'type' => $event->compensation->type,
                 ] : null,
                 'agency' => [
                     'id' => $event->agency->id,
@@ -100,7 +100,7 @@ class EventController extends Controller
      */
     public function apply(Request $request, Event $event)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
 
         // Verify user belongs to the same agency as the event
         if ($user->agency_id !== $event->agency_id) {
@@ -147,7 +147,7 @@ class EventController extends Controller
      */
     public function cancelApplication(Event $event)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
 
         $assignment = EventAssignment::where('event_id', $event->id)
             ->where('user_id', $user->id)

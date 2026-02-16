@@ -26,6 +26,7 @@ Route::middleware(['auth', 'role:agency_owner'])->prefix('admin')->group(functio
     // Assignment routes
     Route::post('/assignments/{assignment}/approve', [AdminAssignmentController::class, 'approve'])->name('admin.assignments.approve');
     Route::post('/assignments/{assignment}/reject', [AdminAssignmentController::class, 'reject'])->name('admin.assignments.reject');
+    Route::delete('/assignments/{assignment}', [AdminAssignmentController::class, 'destroy'])->name('admin.assignments.destroy');
 
     // Payroll routes
     Route::get('/payroll', [AdminPayrollController::class, 'index'])->name('admin.payroll.index');

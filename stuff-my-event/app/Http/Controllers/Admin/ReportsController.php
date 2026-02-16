@@ -20,7 +20,7 @@ class ReportsController extends Controller
      */
     public function index(): Response
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->agency;
 
         if (!$agency) {
@@ -48,8 +48,8 @@ class ReportsController extends Controller
             ->map(function ($staff) use ($agency) {
                 // Get total earnings for this staff member
                 $totalEarnings = EventPayment::whereHas('event', function ($query) use ($agency) {
-                        $query->where('agency_id', $agency->id);
-                    })
+                    $query->where('agency_id', $agency->id);
+                })
                     ->where('user_id', $staff->id)
                     ->sum('amount');
 
@@ -92,7 +92,7 @@ class ReportsController extends Controller
             ->get()
             ->map(function ($event) {
                 $totalPaid = $event->payments->sum('amount');
-                
+
                 // Get payment breakdown by staff
                 $staffPayments = $event->payments->groupBy('user_id')->map(function ($payments, $userId) {
                     $user = $payments->first()->user;
@@ -132,8 +132,8 @@ class ReportsController extends Controller
                 ->where('status', EventStatus::COMPLETED)
                 ->count(),
             'total_paid' => EventPayment::whereHas('event', function ($query) use ($agency) {
-                    $query->where('agency_id', $agency->id);
-                })
+                $query->where('agency_id', $agency->id);
+            })
                 ->sum('amount'),
             'active_staff' => User::where('agency_id', $agency->id)
                 ->where('role', UserRole::STAFF_MEMBER)

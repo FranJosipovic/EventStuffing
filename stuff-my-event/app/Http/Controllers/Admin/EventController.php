@@ -88,6 +88,8 @@ class EventController extends Controller
             'location_latitude' => ['nullable', 'numeric', 'min:-90', 'max:90'],
             'location_longitude' => ['nullable', 'numeric', 'min:-180', 'max:180'],
             'required_staff_count' => ['required', 'integer', 'min:1', 'max:100'],
+            'wage_amount' => ['nullable', 'numeric', 'min:0'],
+            'wage_type' => ['nullable', 'in:fixed,hourly'],
         ], [
             'date.after_or_equal' => 'Event date must be today or in the future.',
             'time_to.after' => 'End time must be after start time.',
@@ -113,6 +115,14 @@ class EventController extends Controller
             'status' => EventStatus::NEW,
             'agency_id' => $user->agency_id,
         ]);
+
+        // Create compensation if wage data is provided
+        if (isset($validated['wage_amount']) && $validated['wage_amount'] > 0) {
+            $event->compensation()->create([
+                'type' => $validated['wage_type'] ?? 'hourly',
+                'amount' => $validated['wage_amount'],
+            ]);
+        }
 
         return redirect()->route('admin.events.index')
             ->with('success', 'Event created successfully!');

@@ -19,7 +19,7 @@ class PayrollController extends Controller
      */
     public function index(): Response
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $agency = $user->agency;
 
         if (!$agency) {
@@ -119,7 +119,7 @@ class PayrollController extends Controller
      */
     public function processPayment(Request $request, Event $event)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
 
         // Verify access
         if ($event->agency_id !== $user->agency_id) {

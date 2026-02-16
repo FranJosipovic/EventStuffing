@@ -12,7 +12,7 @@ class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $user = auth()->guard()->user();
         $year = $request->input('year', now()->year);
         $month = $request->input('month', now()->month);
 
